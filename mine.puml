@@ -1,0 +1,79 @@
+@startuml
+partition launcher.py {
+    partition def_main {
+        (*) --> "config settings"
+        --> start_as_peer
+    }
+
+    partition def_start_as_peer {
+        --> "prologue & some stuffs"
+        --> cls_PeerService
+    }
+}
+
+partition peer_service.py {
+    partition cls_PeerService {
+        --> "basic settings"
+'        {
+'            Services: [common, inner, outer],
+'            targets: [peer, rest].
+'            etc...
+'        }"
+'
+'        --> __init_port
+        partition def_serv {
+            --> "basic settings {
+                amqp, PeerOuterService, PeerInnerService, __channel_infos
+            }"
+
+            partition def__run_rest_services {
+                --> RestService
+            }
+
+            partition def_run_common_service {
+                --> def_run_common_service
+                --> rest_service.py
+                --> loopchain_pb2_grpc.py
+            }
+
+            --> __inner_service.connect (Earlgrey...)
+
+            }
+        }
+
+    }
+}
+
+' 로그에서 꽤나 초기에 실행되고 있음. 그리다 보면 연결되겠지...
+partition channel {
+    partition channel_inner_service.py {
+'        partition cls_ChannelTxCreatorInnerTask {
+'        }
+'        partition cls_ChannelTxCreatorInnerService {
+'        }
+'
+'        partition cls_ChannelTxCreatorInnerStub {
+'        }
+'        partition cls_ChannelTxReceiverInnerTask {
+'        }
+'        partition cls_ChannelTxReceiverInnerService {
+'        }
+'        partition cls_ChannelTxReceiverInnerStub {
+'        }
+'        partition cls_ChannelTxCreatorProcess {
+'        }
+'        partition cls*_ChannelTxReceiverProcess {
+'        }
+'        partition cls*_ChannelInnerTask {
+'        }
+'        partition cls*_ChannelInnerService {
+'        }
+'        partition cls*_ChannelInnerStub {
+'        }
+    }
+
+}
+
+
+@endmul
+
