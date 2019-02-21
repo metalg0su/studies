@@ -1,0 +1,85 @@
+@startuml
+
+partition t1 {
+    partition peer_service.py {
+        (*) -> "실행 중인 peer의 id 체크"
+        -> "채널 구동 -?"
+        -> "구동 중인 채널 정보 출력"
+        -> "사닉 rest 서버 시작"
+        -> "peer 서비스 시작"
+        -> "peer 초기화 완료"
+    }
+
+    partition container {
+        -> ㅇ
+    }
+
+    partition common_thread.py {
+        -> ㅇ
+    }
+
+    partition grpc_helper.py {
+        -> ㅇ
+    }
+    partition stub_collection.py {
+        -> ㅇ
+    }
+    partition common_subprocess.py {
+        -> d
+    }
+    partition peer_outer_service.py {
+    '    밖에서 오는 request를 처리하는듯
+    '    ->
+    }
+}
+
+partition t2 {
+    partition channel_service.py {
+        -> "블록 매니저 실행?"
+        -> "channel_manage_data를 읽어서 목표 peer들을 확인하는 듯"
+        -> "채널 초기화 완료"
+        -> "리더를 찾는 것 같음"
+        -> "제네시스 블럭 확인"
+    }
+    partition peer_manager.py {
+'        얘는 유효한 피어들의 정보를 추가하는 것 같아
+        -> "채널 매니지 데이터에서 하나씩 찾아서.."
+        -> "peer의 order list를 만든다."
+        -> "peer 리더를 선정한다?"
+    }
+    partition common_thread.py {
+        -> ㅇ
+    }
+    partition broadcast_scheduler.py {
+'        자기 자신을 포함해서 모든 피어에게 접속해요? BroadcastThread received subscribe command peer_target: 10.241.0.207:7100
+'        심지어 자기 자신은 두 번 하는디?
+        -> "목표 peer에 접속"
+        -> "안되면 계속 접속 시도함"
+    }
+    partition grpc_helper.py {
+'        역할이 무엇?
+    }
+    partition stub_manager.py {
+
+    }
+    partition common_thread.py {
+    }
+    partition channel_inner_service.py {
+    }
+    partition vote.py {
+    }
+    partition core.py {
+    }
+    partition blockchain.py {
+    }
+    partition timer_service.py {
+    }
+    partition consensus_siever.py {
+    }
+    partition epoch.py {
+    }
+
+}
+
+@enduml
+
