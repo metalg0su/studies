@@ -1,0 +1,179 @@
+@startuml
+hide footbox
+autonumber "<font color=red><b> 0 "
+
+
+create "launcher(peer)"
+-> "launcher(peer)": $ loop peer ...
+== "프로세스 깨우기 시작" == 
+create PeerService
+
+group PEER
+    "launcher(peer)" -> PeerService: init and serve
+    create StubCollection
+    PeerService -> StubCollection: call. giv amqp_target and its key
+
+    create PeerOuterService
+    PeerService -> PeerOuterService: init
+    note right PeerOuterService
+        secure gRPC service for outer Client or other Peer??...
+        demotool에서 peer에게 요청할 수 있는 balance, supply 등을 직접 받을 수 있는 곳인가봄
+        peer_list도 받아올 수 있는듯?
+    end note
+    create PeerInnerService
+    PeerService -> PeerInnerService: init
+    note right PeerInnerService: 내부 통신에서 들을 준비(listen쪽)를 하는 것 같음. skel같은건가. 실제 커넥트는 추후에 하는 것 같음.
+    -> PeerService: get_channel_info
+    note left 
+        channel_manage_data.json을 이 시점에서 읽는 듯 하다.
+    end note
+end 
+
+group REST
+    create RestService
+    PeerService -> RestService: init 
+    RestService -> RestService: run 
+    create "launcher(rest)" #FFAAAA
+    RestService -> "launcher(rest)": execute New Process
+    create "iconrpcserver_app.main()"
+    "launcher(rest)" -> "iconrpcserver_app.main()": start_process 
+    note over "iconrpcserver_app.main()" #FFAAAA: 이건 나중에. 이 시점부터는 다른 모듈을 실행하는 것 같음.
+end 
+
+note over PeerService: CommonService쪽 모르겠음
+group "Peer의 Inner와 Outer와 관련된 건가?? - 모르겠음 "
+    ' create CommonService1
+    ' PeerService -> CommonService1: start?
+    ' CommonService1 -> PeerOuterService: bind?
+    ' PeerOuterService -[#blue]> rabbitMQd: connect?
+    ' CommonService1 -> PeerInnerService: bind?
+    ' PeerInnerService -[#blue]> rabbitMQd: connect?
+    ' note over CommonService1: "이건 grpc를 통해 바깥 세상과 연결해 주기 위한 용도로 정의하는 건가 \n  잘 모르겠음. 이게 PeerOuterService.connect에 해당하는 걸 수도"
+end
+
+' ===== async PeerService.serve()._serve()
+group PeerService.ready_tasks
+    PeerService -> StubCollection: call to serve. ready for tasks!
+    create PeerInnerStub
+    StubCollection -> PeerInnerStub : create by given data above
+    note right
+        이게 내부 프로세스간의 창구 sender 쪽이 되는 것 같은데.
+        PeerInnerStub은 rabbitMQd로 접속을 지금 안하네?
+        나중에도 안하는ㄱ 것 같은데.. 어디서 하는거지:
+    end note
+
+    == CHANNEL 관련은 여기서부터 시작? == 
+    PeerService -> PeerService : read self.__channel_infos
+    loop as_number_of_channels_from_INFOs 
+        create ChannelInnerStub
+        StubCollection -> ChannelInnerStub: create 
+        ChannelInnerStub -[#blue]> rabbitMQd: connect 
+        create ChannelTxReceiverInnerStub
+        StubCollection -> ChannelTxReceiverInnerStub: create
+        ChannelTxReceiverInnerStub -[#blue]> rabbitMQd: connect 
+        create IconScoreInnerStub
+        StubCollection -> IconScoreInnerStub: create 
+        IconScoreInnerStub -[#blue]> rabbitMQd: connnect 
+    end
+end
+' 맞나..?
+
+PeerInnerService -[#blue]> rabbitMQd: connect to listen
+
+newpage
+
+group CHANNEL
+    PeerService -> PeerService : read self.__channel_infos
+    loop as_number_of_channels_from_INFOs 
+        create "launcher(channel)"
+        PeerService -> "launcher(channel)": execute New Process
+        
+        group 프로세스 분기
+        note right: 런처만 서브프로세스로 띄우고 작업 시행. 여기가 원래는 메인인것같다.
+        ChannelInnerStub -> rabbitMQd: say hello
+        rabbitMQd -> ChannelInnerStub: response hello?
+        PeerService -> PeerService: add to channel_stub 
+        end
+        
+        note right: 런처의 서브 프로세스 시퀀스는 여기부터! 
+        create ChannelService
+        "launcher(channel)" -> ChannelService: init
+        create ChannelInnerService
+        ChannelService -> ChannelInnerService: init
+        create ChannelStateMachine
+        ChannelService -> ChannelStateMachine: init
+        note right: 응..???
+        
+        ' ChannelService.serve()
+        PeerInnerStub -> ChannelService: give channel_info_detail
+
+        == channel_info_detail로 아래 init 작업을 수행 ==
+        newpage
+        group "ChannelService.init"
+            create PeerManager
+            ChannelService -> PeerManager: init
+            note right PeerManager
+                현재 피어의 상태를 관리하는 녀석인 것 같다.
+                leader_complain_count, height_block_height, channel_name 등..
+            end note
+            PeerInnerStub -> ChannelService: node를 실행할 때 사용된 키를 받아옴
+            create Signer
+            ChannelService -> Signer: Signer, auth 등의 뭔가를 막 함 
+            
+            create BroadcastScheduler
+            ChannelService -> BroadcastScheduler: init
+            BroadcastScheduler -> BroadcastScheduler: start
+            note right: 이게 뭐하는 건지 잘 모르겠음. \n심지어 프로세스를  실행하는 것 같은데 
+
+            create BlockManager
+            ChannelService -> BlockManager: init 
+            note right BlockManager
+                db 저장 경로, tx큐 등등 뭔가 실질적으로 tx를 주고 받고 하는 것을 판단하고 관장하는 곳인 것 같다.
+            end note
+
+            create RestStubManager
+            ChannelService -> RestStubManager: init - replace rs?
+            note right RestStubManager
+                radio_station_stub.
+                다른 Peer에게 질의를 던질 때 사용되는 stub인가?... 
+            end note
+
+            group SCORE
+                '맞나..??;;;
+                create ScoreContainer 
+                ChannelService -> ScoreContainer: init
+                create "launcher(score)"
+                ScoreContainer -> "launcher(score)": execute New Process
+                create  IconScoreInnerStub
+                ScoreContainer -> IconScoreInnerStub: create
+                IconScoreInnerStub -[#blue]> rabbitMQd: connect
+                IconScoreInnerStub -[#blue]> rabbitMQd: say hello  
+                rabbitMQd -> IconScoreInnerStub: response hello?.. 
+                
+                create IconService
+                "launcher(score)" -> IconService: init with params and serve
+                create IconScoreInnerService
+                IconService -> IconScoreInnerService: init
+                IconScoreInnerService -[#blue]> rabbitMQd: connect
+                note over IconScoreInnerService: 이전 양식과는 다르게 async 부분을 클로져처럼 해 놓았네... 
+            end 'Score group end
+
+            ChannelInnerService -[#blue]> rabbitMQd: connect?
+            note over ChannelInnerService: connect를 조금 늦게 하네. 이유가 있는건가 
+            ChannelInnerService ->  ChannelInnerService: init sub services. 
+            note over ChannelInnerService #red: 나중에 더 살펴보기
+
+            group "잘 모르겠음.." 
+                create NodeSubscriber
+                ChannelService -> NodeSubscriber: init
+                note over NodeSubscriber: 무엇?...
+            end 
+
+            == "이 시점부터는 프로세스 실행이 아니라 다른 페이즈로 넘어가는 듯 하다 .." ==
+            newpage
+            BlockManager -> BlockManager: init epoch ..?
+            ...
+        end 'ChannelService.init end
+    end 'loop end
+end 'group CHANNEL end
+@enduml
