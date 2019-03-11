@@ -1,0 +1,20 @@
+@startuml
+'맞나..??;;;
+create ChannelService
+create ScoreContainer
+ChannelService -> ScoreContainer: init
+create "launcher(score)"
+ScoreContainer -> "launcher(score)": execute New Process
+create  IconScoreInnerStub
+ScoreContainer -> IconScoreInnerStub: create
+IconScoreInnerStub -[#blue]> rabbitMQd: connect
+IconScoreInnerStub -[#blue]> rabbitMQd: say hello
+rabbitMQd -> IconScoreInnerStub: response hello?..
+
+create IconService
+"launcher(score)" -> IconService: init with params and serve
+create IconScoreInnerService
+IconService -> IconScoreInnerService: init
+IconScoreInnerService -[#blue]> rabbitMQd: connect
+note over IconScoreInnerService: 이전 양식과는 다르게 async 부분을 클로져처럼 해 놓았네...
+@enduml

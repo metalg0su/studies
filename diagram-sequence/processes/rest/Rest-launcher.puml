@@ -1,0 +1,11 @@
+@startuml
+create PeerService
+create RestService
+PeerService -> RestService: init
+RestService -> RestService: run
+create "launcher(rest)" #FFAAAA
+RestService -> "launcher(rest)": execute New Process
+create "iconrpcserver_app.main()"
+"launcher(rest)" -> "iconrpcserver_app.main()": start_process
+note over "iconrpcserver_app.main()" #FFAAAA: 이건 나중에. 이 시점부터는 다른 모듈을 실행하는 것 같음.
+@enduml

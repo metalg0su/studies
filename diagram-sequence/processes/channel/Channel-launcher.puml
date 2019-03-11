@@ -1,0 +1,61 @@
+@startuml
+hide footbox
+
+create "launcher(channel)"
+create ChannelService
+"launcher(channel)" -> ChannelService: init
+create ChannelInnerService
+ChannelService -> ChannelInnerService: init
+create ChannelStateMachine
+ChannelService -> ChannelStateMachine: init
+note right: 응..???
+
+' ChannelService.serve()
+PeerInnerStub -> ChannelService: give channel_info_detail
+
+== channel_info_detail로 아래의 ChannelService.init 작업을 수행 ==
+create PeerManager
+ChannelService -> PeerManager: init
+note right PeerManager
+    현재 피어의 상태를 관리하는 녀석인 것 같다.
+    leader_complain_count, height_block_height, channel_name 등..
+end note
+PeerInnerStub -> ChannelService: node를 실행할 때 사용된 키를 받아옴
+create Signer
+ChannelService -> Signer: Signer, auth 등의 뭔가를 막 함
+
+create BroadcastScheduler
+ChannelService -> BroadcastScheduler: init
+BroadcastScheduler -> BroadcastScheduler: start
+note right: 이게 뭐하는 건지 잘 모르겠음. \n심지어 프로세스를  실행하는 것 같은데
+
+create BlockManager
+ChannelService -> BlockManager: init
+note right BlockManager
+    db 저장 경로, tx큐 등등 뭔가 실질적으로 tx를 주고 받고 하는 것을 판단하고 관장하는 곳인 것 같다.
+end note
+
+create RestStubManager
+ChannelService -> RestStubManager: init - replace rs?
+note right RestStubManager
+    radio_station_stub.
+    다른 Peer에게 질의를 던질 때 사용되는 stub인가?...
+end note
+create ScoreContainer
+ChannelService -> ScoreContainer: init
+note over ScoreContainer #red: 프로세스 분기... Score로
+destroy ScoreContainer
+
+ChannelInnerService -[#blue]> rabbitMQd: connect?
+note over ChannelInnerService: connect를 조금 늦게 하네. 이유가 있는건가
+ChannelInnerService ->  ChannelInnerService: init sub services.
+note left #red: sub service는 나중에 더 살펴보기
+
+create NodeSubscriber
+ChannelService -> NodeSubscriber: init
+note over NodeSubscriber #red: 무엇?...
+
+== "이 시점부터는 프로세스 실행이 아니라 다른 페이즈로 넘어가는 듯 하다 .." ==
+BlockManager -> BlockManager: init epoch ..?
+...
+@enduml

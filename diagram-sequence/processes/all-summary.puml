@@ -1,0 +1,79 @@
+@startuml
+hide footbox
+hide unlinked
+autonumber "<font color=red><b> 0 "
+
+actor User
+
+box "PeerService" #e2ac93
+    participant PeerService
+    participant PeerOuterService
+    participant PeerInnerService
+end box
+
+box "RestService" #d0e293
+    participant RestService 
+end box
+
+box "ChannelService" #93e2be
+    participant ChannelService 
+    participant PeerManager 
+    participant Signer
+    participant BroadcastScheduler 
+    participant BlockManager 
+    participant NodeSubscriber
+    participant ChannelService 
+    participant ChannelService 
+end box
+
+box "IconScore" #a593e2
+    participant IconScore
+end box
+
+
+User -> PeerService: $ loop peer ...
+create PeerOuterService
+PeerService -> PeerOuterService: init
+create PeerInnerService
+PeerService -> PeerInnerService: init
+
+create RestService 
+PeerService -> RestService: execute New Process 
+
+' note over PeerService: CommonService쪽 모르겠음
+group "Peer의 Inner와 Outer와 관련된 건가?? - 모르겠음 "
+    ' create CommonService1
+    ' PeerService -> CommonService1: start?
+    ' CommonService1 -> PeerOuterService: bind?
+    ' PeerOuterService -[#blue]> rabbitMQd: connect?
+    ' CommonService1 -> PeerInnerService: bind?
+    ' PeerInnerService -[#blue]> rabbitMQd: connect?
+    ' note over CommonService1: "이건 grpc를 통해 바깥 세상과 연결해 주기 위한 용도로 정의하는 건가 \n  잘 모르겠음. 이게 PeerOuterService.connect에 해당하는 걸 수도"
+end
+
+create ChannelService
+PeerService -> ChannelService: execute New Process
+
+create PeerManager
+ChannelService -> PeerManager: init
+
+create Signer
+ChannelService -> Signer: Signer, auth 등의 뭔가를 막 함 
+
+create BroadcastScheduler
+ChannelService -> BroadcastScheduler: init
+
+create BlockManager
+ChannelService -> BlockManager: init 
+
+
+create IconScore 
+ChannelService -> IconScore: execute New Process
+    
+create NodeSubscriber
+ChannelService -> NodeSubscriber: init
+
+== "이 시점부터는 프로세스 실행이 아니라 다른 페이즈로 넘어가는 듯 하다 .." ==
+BlockManager -> BlockManager: init epoch ..?
+...
+@enduml

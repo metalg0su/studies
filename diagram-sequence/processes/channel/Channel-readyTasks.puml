@@ -1,0 +1,31 @@
+@startuml
+PeerService -> PeerService : read self.__channel_infos
+loop as_number_of_channels_from_INFOs 
+    create StubCollection 
+    create ChannelInnerStub
+    StubCollection -> ChannelInnerStub: create 
+    ChannelInnerStub -[#blue]> rabbitMQd: connect 
+    create ChannelTxReceiverInnerStub
+    StubCollection -> ChannelTxReceiverInnerStub: create
+    ChannelTxReceiverInnerStub -[#blue]> rabbitMQd: connect 
+    create IconScoreInnerStub
+    StubCollection -> IconScoreInnerStub: create 
+    IconScoreInnerStub -[#blue]> rabbitMQd: connnect 
+end
+' 맞나..?
+
+PeerInnerService -[#blue]> rabbitMQd: connect to listen
+
+group CHANNEL
+    PeerService -> PeerService : read self.__channel_infos
+    loop as_number_of_channels_from_INFOs 
+        create "launcher(channel)"
+        PeerService -> "launcher(channel)": execute New Process
+        note over "launcher(channel)": 프로세스 분기...
+        ChannelInnerStub -> rabbitMQd: say hello
+        rabbitMQd -> ChannelInnerStub: response hello?
+        PeerService -> PeerService: add to channel_stub
+        ...
+    == "launcher(channel)"에서 계속 ==
+    end
+@enduml
