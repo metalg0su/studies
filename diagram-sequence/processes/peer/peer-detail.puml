@@ -1,12 +1,54 @@
 @startuml
 hide footbox
-autonumber "<font color=red><b> 0 "
+autonumber 
 
+actor User
 
-create "launcher(peer)"
--> "launcher(peer)": $ loop peer ...
-== "프로세스 깨우기 시작" == 
+box "PeerService" #e2ac93
+    participant PeerService
+    participant PeerOuterService
+    participant PeerInnerService
+    participant CommonService
+end box
+
+box "RestService" #d0e293
+    participant RestService 
+end box
+
+box "ChannelService" #93e2be
+    participant ChannelService 
+end box
+
+box "IconScore" #a593e2
+    participant IconScoreService
+end box
+
 create PeerService
+User -> PeerService: $ loop peer ...
+
+' PeerOuterService: connection with other peers.. by gRPC.
+create PeerOuterService
+PeerService -> PeerOuterService: init
+' PeerInnerService: connection with whom?.. by rabbitMQ 
+create PeerInnerService
+PeerService -> PeerInnerService: init
+' Rest. Listens to world requests.
+create RestService 
+PeerService -> RestService: execute New Process.
+note over RestService: MOVE TO .. 
+' CommonService: relayer between Peer and RS?..
+create CommonService
+PeerService -> CommonService: run. dunno
+' 
+' some bindings here by making stubs:
+'   - PeerInnerStub: 
+'   - ChannelInnerStub
+'   - ChannelTxReceiverInnerStub
+'   - IconScoreInnerStub
+' then, Connect itself to rabbitMQ, waiting to actions of others..?
+'
+' ----------------------------------------------------------------
+
 
 "launcher(peer)" -> PeerService: init and serve
 create StubCollection
@@ -50,5 +92,15 @@ group PeerService.ready_tasks
     create PeerInnerStub
     StubCollection -> PeerInnerStub : create by given data above
     note over PeerInnerStub: Channel-readyTask로...
+
+' --------------------
+
+create ChannelService
+PeerService -> ChannelService: execute New Process
+note over ChannelService: MOVE TO ..
+create IconScoreService 
+ChannelService -> IconScoreService: execute New Process
+note over IconScoreService: MOVE TO ..
+
 
 @enduml
