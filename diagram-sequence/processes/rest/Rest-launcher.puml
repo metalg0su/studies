@@ -1,11 +1,69 @@
+
+     ┌───────────┐          ┌───────────┐          ┌─────┐          ┌────────┐          ┌────────────────┐          ┌───────────────────┐          ┌────────────────────────────┐          ┌─────────────────────┐
+     │PeerService│          │RestService│          │Sanic│          │Gunicorn│          │PeerInnerService│          │ChannelInnerService│          │ChannelTxCreatorInnerService│          │IconScoreInnerService│
+     └─────┬─────┘          └─────┬─────┘          └──┬──┘          └───┬────┘          └───────┬────────┘          └─────────┬─────────┘          └─────────────┬──────────────┘          └──────────┬──────────┘
+           │     init &  run      │                   │                 │                       │                             │                                  │                                    │
+           │─────────────────────>│                   │                 │                       │                             │                                  │                                    │
+           │                      │                   │                 │                       │                             │                                  │                                    │
+           ╔══════════════════════╧═══════════════════╧═══╗             │                       │                             │                                  │                                    │
+           ║2 proc. parent-launcher and child-server_app ░║             │                       │                             │                                  │                                    │
+           ╚══════════════════════╤═══════════════════╤═══╝             │                       │                             │                                  │                                    │
+           │                      │       init        │                 │                       │                             │                                  │                                    │
+           │                      │──────────────────>│                 │                       │                             │                                  │                                    │
+           │                      │                   │                 │                       │                             │                                  │                                    │
+           │                      │         ╔═════════╧══════════╗      │                       │                             │                                  │                                    │
+           │                      │         ║dispatcher setting ░║      │                       │                             │                                  │                                    │
+           │                      │         ╚═════════╤══════════╝      │                       │                             │                                  │                                    │
+           │                      │                   │      binding    │                       │                             │                                  │                                    │
+           │                      │────────────────────────────────────────────────────────────>│                             │                                  │                                    │
+           │                      │                   │                 │                       │                             │                                  │                                    │
+           │                      │                   │                 │   binding             │                             │                                  │                                    │
+           │                      │──────────────────────────────────────────────────────────────────────────────────────────>│                                  │                                    │
+           │                      │                   │                 │                       │                             │                                  │                                    │
+           │                      │                   │                 │                     binding                         │                                  │                                    │
+           │                      │─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────>│                                    │
+           │                      │                   │                 │                       │                             │                                  │                                    │
+           │                      │                   │                 │                       │               binding       │                                  │                                    │
+           │                      │──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────>│
+           │                      │                   │                 │                       │                             │                                  │                                    │
+           │                      │  run and listens to world sounds    │                       │                             │                                  │                                    │
+           │                      │────────────────────────────────────>│                       │                             │                                  │                                    │
+           │                      │                   │                 │                       │                             │                                  │                                    │
+           │                      │                   │   ╔═════════════╧═══════════════╗       │                             │                                  │                                    │
+           │                      │                   │   ║listens and routes to Sanic ░║       │                             │                                  │                                    │
+     ┌─────┴─────┐          ┌─────┴─────┐          ┌──┴──┐╚═════════════════════════════╝───────┴────────┐          ┌─────────┴─────────┐          ┌─────────────┴──────────────┐          ┌──────────┴──────────┐
+     │PeerService│          │RestService│          │Sanic│          │Gunicorn│          │PeerInnerService│          │ChannelInnerService│          │ChannelTxCreatorInnerService│          │IconScoreInnerService│
+     └───────────┘          └───────────┘          └─────┘          └────────┘          └────────────────┘          └───────────────────┘          └────────────────────────────┘          └─────────────────────┘
+
 @startuml
-create PeerService
-create RestService
-PeerService -> RestService: init
-RestService -> RestService: run
-create "launcher(rest)" #FFAAAA
-RestService -> "launcher(rest)": execute New Process
-create "iconrpcserver_app.main()"
-"launcher(rest)" -> "iconrpcserver_app.main()": start_process
-note over "iconrpcserver_app.main()" #FFAAAA: 이건 나중에. 이 시점부터는 다른 모듈을 실행하는 것 같음.
+participant PeerService
+participant RestService
+
+
+box "RestService"
+    participant RestService
+    participant Sanic 
+    participant Gunicorn
+end box
+
+box "OTHER_SERVS"
+    participant PeerInnerService
+    participant ChannelInnerService
+    participant ChannelTxCreatorInnerService
+    participant IconScoreInnerService
+end box
+
+PeerService -> RestService: init &  run
+note over RestService: 2 proc. parent-launcher and child-server_app
+RestService -> Sanic: init
+note over Sanic: dispatcher setting
+
+RestService -> PeerInnerService: binding 
+RestService -> ChannelInnerService: binding
+RestService -> ChannelTxCreatorInnerService: binding
+RestService -> IconScoreInnerService: binding
+
+RestService -> Gunicorn: run
+note over Gunicorn: listens to world sounds and routes to Sanic
+
 @enduml
