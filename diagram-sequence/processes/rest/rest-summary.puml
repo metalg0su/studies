@@ -47,6 +47,7 @@ box "OTHER_SERVS"
     participant IconScoreInnerService
 end box
 
+' -----------------------------
 PeerService -> RestService: init &  run
 note left: 2 proc. parent-launcher and child-server_app
 RestService -> Sanic: init

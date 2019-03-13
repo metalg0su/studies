@@ -1,0 +1,161 @@
+
+     ┌───────────┐                                                                                                                                                                                                                                                                                                ┌─────────┐
+     │PeerService│                                                                                                                                                                                                                                                                                                │rabbitMQd│
+     └─────┬─────┘                                                                                                                                                                                                                                                                                                └────┬────┘
+           │execute New Process ┌──────────────┐                                                                                                                                                                                                                                                                       │
+           │───────────────────>│ChannelService│                                                                                                                                                                                                                                                                       │
+           │                    └──────┬───────┘                                                                                                                                                                                                                                                                       │
+           │                                                                                       init                                                            ┌────────────┐                                                                                                                                      │
+           │                           │ ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────>│TimerService│                                                                                                                                      │
+           │                           │                                                                                                                           └─────┬──────┘                                                                                                                                      │
+           │                           │                                                                                                                         ╔═════════════════╗                                                                                                                                   │
+           │                           │                                                                                                                         ║investigating.. ░║                                                                                                                                   │
+           │                           │                                                                                                                         ╚═══════╤═════════╝                                                                                                                                   │
+           │                           │                                                                       init.                                                     │                 ┌───────────────────┐                                                                                                       │
+           │                           │ ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────>│ChannelInnerService│                                                                                                       │
+           │                           │                                                                                                                                 │                 └─────────┬─────────┘                                                                                                       │
+           │                           │                                                                          set init_state and proceed..?                          │                                                ┌───────────────────┐                                                                        │
+           │                           │ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────>│ChannelStateMachine│                                                                        │
+           │                           │                                                                                                                                 │                           │                    └─────────┬─────────┘                                                                        │
+           │  ask channel info detail  │                                                                                                                                 │                           │                                                                                                                 │
+           │<───────────────────────────                                                                                                                                 │                           │                              │                                                                                  │
+           │                           │                                                                                                                                 │                           │                              │                                                                                  │
+           │ give channel info detail  │                                                                                                                                 │                           │                              │                                                                                  │
+           │───────────────────────────>                                                                                                                                 │                           │                              │                                                                                  │
+           │                           │                                                                                                                                 │                           │                              │                                                                                  │
+           │                           │       init       ┌───────────┐                                                                                                  │                           │                              │                                                                                  │
+           │                           │ ────────────────>│PeerManager│                                                                                                  │                           │                              │                                                                                  │
+           │                           │                  └─────┬─────┘                                                                                                  │                           │                              │                                                                                  │
+           │                           │               ╔══════════════════╗                                                                                              │                           │                              │                                                                                  │
+           │                           │               ║investigating... ░║                                                                                              │                           │                              │                                                                                  │
+           │                           │               ╚════════╤═════════╝                                                                                              │                           │                              │                                                                                  │
+           │                           │                  init  │                ┌──────────────────┐                                                                    │                           │                              │                                                                                  │
+           │                           │ ───────────────────────────────────────>│BroadcastScheduler│                                                                    │                           │                              │                                                                                  │
+           │                           │                        │                └────────┬─────────┘                                                                    │                           │                              │                                                                                  │
+           │                           │                        │                    ╔════════════╗                                                                      │                           │                              │                                                                                  │
+           │                           │                        │                    ║MOVE TO .. ░║                                                                      │                           │                              │                                                                                  │
+           │                           │                        │                    ╚════╤═══════╝                                                                      │                           │                              │                                                                                  │
+           │                           │                        │        init             │                    ┌────────────┐                                            │                           │                              │                                                                                  │
+           │                           │ ─────────────────────────────────────────────────────────────────────>│BlockManager│                                            │                           │                              │                                                                                  │
+           │                           │                        │                         │                    └─────┬──────┘                                            │                           │                              │                                                                                  │
+           │                           │                        │                         │                     ╔════════════╗                                           │                           │                              │                                                                                  │
+           │                           │                        │                         │                     ║MOVE TO .. ░║                                           │                           │                              │                                                                                  │
+           │                           │                        │                         │                     ╚════╤═══════╝                                           │                           │                              │                                                                                  │
+           │                           │                        │             execute New Process                    │                 ┌────────────────┐                │                           │                              │                                                                                  │
+           │                           │ ─────────────────────────────────────────────────────────────────────────────────────────────>│IconScoreService│                │                           │                              │                                                                                  │
+           │                           │                        │                         │                          │                 └───────┬────────┘                │                           │                              │                                                                                  │
+           │                           │                        │                         │                          │                    ╔════════════╗                 │                           │                              │                                                                                  │
+           │                           │                        │                         │                          │                    ║MOVE TO .. ░║                 │                           │                              │                                                                                  │
+           │                           │                        │                         │                          │                    ╚════╤═══════╝                 │                           │                              │                                                                                  │
+           │                           │                        │                         │                          │                         │                         │                           │                              │             bind and ready to listen?                                            │
+           │                           │                        │                         │                          │                         │                         │                           │ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────>
+           │                           │                        │                         │                          │                         │                         │                           │                              │                                                                                  │
+           │                           │                        │                         │                          │                      get tx_versioner of its blockchain                       │                              │                                                                                  │
+           │                           │                        │                         │                          │ <─────────────────────────────────────────────────────────────────────────────│                              │                                                                                  │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                                                                                  │
+           │                           │                        │                         │                          │                      give tx_versioner of its blockchain                      │                              │                                                                                  │
+           │                           │                        │                         │                          │ ─────────────────────────────────────────────────────────────────────────────>│                              │                                                                                  │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                                                                                  │
+           │                           │                        │                         │                          │                         │                         │                           │                       fork.  │                    ┌────────────────┐                                            │
+           │                           │                        │                         │                          │                         │                         │                           │ ─────────────────────────────────────────────────>│ChannelTxCreator│                                            │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                    └───────┬────────┘                                            │
+           │                           │                        │                         │                          │                         │                         │                           │                              │      fork.                                     ┌─────────────────┐               │
+           │                           │                        │                         │                          │                         │                         │                           │ ─────────────────────────────────────────────────────────────────────────────>│ChannelTxReciever│               │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                            │                   └────────┬────────┘               │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                   ╔════════╧══════════════════════════════════════╗              │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                   ║confusing..                                   ░║              │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                   ║ using suffix 'InnerService-_-'                ║              │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                   ╚════════╤════════════════════════════╤═════════╝              │
+           │                           │                        │                         │           start          │                         │                         │                           │                              │                            │                            │                        │
+           │                           │ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────>                           │                              │                            │                            │                        │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                            │                            │                        │
+           │                           │                        │                         │                          │    complete_init_components                       │                           │                              │                            │                            │                        │
+           │                           │ ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────>│                            │                            │                        │
+           │                           │                        │                         │                          │                         │                         │                           │                              │                            │                            │                        │
+           │                           │                        │                         │                          │                         │                         │                           │                         ╔════╧══════╗                     │                            │                        │
+           │                                                                                                                                                                                                                   ║MOVE TO.. ░║                                                                           │
+     ┌─────┴─────┐              ┌──────┴───────┐          ┌─────┴─────┐          ┌────────┴─────────┐          ┌─────┴──────┐          ┌───────┴────────┐          ┌─────┴──────┐          ┌─────────┴─────────┐          ┌────╚═══════════╝──┐          ┌───────┴────────┐          ┌────────┴────────┐          ┌────┴────┐
+     │PeerService│              │ChannelService│          │PeerManager│          │BroadcastScheduler│          │BlockManager│          │IconScoreService│          │TimerService│          │ChannelInnerService│          │ChannelStateMachine│          │ChannelTxCreator│          │ChannelTxReciever│          │rabbitMQd│
+     └───────────┘              └──────────────┘          └───────────┘          └──────────────────┘          └────────────┘          └────────────────┘          └────────────┘          └───────────────────┘          └───────────────────┘          └────────────────┘          └─────────────────┘          └─────────┘
+
+@startuml
+
+box "PeerService" #e2ac93
+    participant PeerService
+end box
+
+box "ChannelService" #93e2be
+    participant ChannelService 
+    participant PeerManager 
+    ' participant Signer
+    participant BroadcastScheduler 
+    participant BlockManager 
+    ' participant NodeSubscriber
+end box
+
+box "IconScore" #a593e2
+    participant IconScoreService
+end box
+
+box "BaseService" #f4e842 
+    participant TimerService
+end box 
+
+box "ChannelInnerService" #ccf9f2
+    participant ChannelInnerService
+    participant ChannelStateMachine
+    participant ChannelTxCreator
+    participant ChannelTxReciever
+end box 
+
+create ChannelService
+PeerService -> ChannelService: execute New Process
+
+'---------- CHANNEL START 
+create TimerService
+ChannelService -> TimerService: init
+note over TimerService: investigating..
+create ChannelInnerService
+ChannelService -> ChannelInnerService: init.
+create ChannelStateMachine
+ChannelService -> ChannelStateMachine: set init_state and proceed..?
+ChannelService -> PeerService: ask channel info detail
+PeerService -> ChannelService: give channel info detail
+
+'---------- initialize channel by detailed info
+create PeerManager
+ChannelService -> PeerManager: init
+note over PeerManager: investigating...
+
+' BroadcastScheduler
+create BroadcastScheduler
+ChannelService -> BroadcastScheduler: init
+note over BroadcastScheduler: MOVE TO ..
+
+' BlockManager
+create BlockManager
+ChannelService -> BlockManager: init 
+note over BlockManager: MOVE TO ..
+
+'---------- SCORE-A
+create IconScoreService 
+ChannelService -> IconScoreService: execute New Process
+note over IconScoreService: MOVE TO ..
+'---------- SCORE-Z
+
+ChannelInnerService -> rabbitMQd: bind and ready to listen?
+ChannelInnerService -> BlockManager: get tx_versioner of its blockchain
+BlockManager -> ChannelInnerService: give tx_versioner of its blockchain
+
+'---------- Initialize Sub ServiceS 
+create ChannelTxCreator
+ChannelInnerService -> ChannelTxCreator: fork. 
+create ChannelTxReciever
+ChannelInnerService -> ChannelTxReciever: fork.
+note over ChannelTxCreator, ChannelTxReciever: confusing..\n using suffix 'InnerService-_-' 
+
+'---------- finallei~ 
+ChannelService -> TimerService: start
+ChannelService -> ChannelStateMachine: complete_init_components
+note over ChannelStateMachine: MOVE TO..
+@enduml
