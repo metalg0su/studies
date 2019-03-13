@@ -50,7 +50,7 @@
            │                           │                        │                         │                          │                         │                         │                           │                              │             bind and ready to listen?                                            │
            │                           │                        │                         │                          │                         │                         │                           │ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────>
            │                           │                        │                         │                          │                         │                         │                           │                              │                                                                                  │
-           │                           │                        │                         │                          │                      get tx_versioner of its blockchain                       │                              │                                                                                  │
+           │                           │                        │                         │                          │                      ask tx_versioner of its blockchain                       │                              │                                                                                  │
            │                           │                        │                         │                          │ <─────────────────────────────────────────────────────────────────────────────│                              │                                                                                  │
            │                           │                        │                         │                          │                         │                         │                           │                              │                                                                                  │
            │                           │                        │                         │                          │                      give tx_versioner of its blockchain                      │                              │                                                                                  │
@@ -144,14 +144,14 @@ note over IconScoreService: MOVE TO ..
 '---------- SCORE-Z
 
 ChannelInnerService -> rabbitMQd: bind and ready to listen?
-ChannelInnerService -> BlockManager: get tx_versioner of its blockchain
+ChannelInnerService -> BlockManager: ask tx_versioner of its blockchain
 BlockManager -> ChannelInnerService: give tx_versioner of its blockchain
 
 '---------- Initialize Sub ServiceS 
 create ChannelTxCreator
-ChannelInnerService -> ChannelTxCreator: fork. 
+ChannelInnerService -> ChannelTxCreator: sub process 
 create ChannelTxReciever
-ChannelInnerService -> ChannelTxReciever: fork.
+ChannelInnerService -> ChannelTxReciever: sub process
 note over ChannelTxCreator, ChannelTxReciever: confusing..\n using suffix 'InnerService-_-' 
 
 '---------- finallei~ 

@@ -1,0 +1,25 @@
+box "PeerService" #e2ac93
+    participant PeerService
+    participant PeerOuterService
+    participant PeerInnerService
+end box
+
+box "RestService" #d0e293
+    participant RestService 
+end box
+
+box "ChannelService" #93e2be
+    participant ChannelService 
+    participant PeerManager 
+    participant Signer
+    participant BroadcastScheduler 
+    participant BlockManager 
+    participant NodeSubscriber
+    participant ChannelService 
+    participant ChannelService 
+end box
+
+box "IconScore" #a593e2
+    participant IconScore
+end box
+
