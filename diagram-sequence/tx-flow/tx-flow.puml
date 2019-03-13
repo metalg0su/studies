@@ -1,0 +1,119 @@
+
+        ┌─┐
+        ║"│
+        └┬┘
+        ┌┼┐
+         │                       ┌────────┐                                 ┌─────┐                          ┌─────────┐          ┌────────────────┐          ┌──────────────────┐
+        ┌┴┐                      │Gunicorn│                                 │Sanic│                          │IconScore│          │ChannelTxCreator│          │BroadcastScheduler│
+      Client                     └───┬────┘                                 └──┬──┘                          └────┬────┘          └───────┬────────┘          └────────┬─────────┘
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │           ╔═══════════╗          │                       │                            │
+════════╪════════════════════════════╪═════════════════════════════════════════╪═══════════╣ CREATE TX ╠══════════╪═══════════════════════╪════════════════════════════╪═══════════════════════════
+        │                            │                                         │           ╚═══════════╝          │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │ 1 worker listens tx request│                                         │                                  │                       │                            │
+        │ ───────────────────────────>                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │ 2 IcxDispatcher routes request to method│                                  │                       │                            │
+        │                            │ ────────────────────────────────────────>                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │           3 validate tx          │                       │                            │
+        │                            │                                         │ ─────────────────────────────────>                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │            4 response            │                       │                            │
+        │                            │                                         │ <─────────────────────────────────                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                      5 create_icx_tx                     │                            │
+        │                            │                                         │ ─────────────────────────────────────────────────────────>                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │────┐                       │
+        │                            │                                         │                                  │                       │    │ <b>6</b>              │
+        │                            │                                         │                                  │                       │<───┘ serialize tx          │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │────┐                       │
+        │                            │                                         │                                  │                       │    │ <b>7</b>              │
+        │                            │                                         │                                  │                       │<───┘ verify tx             │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │────┐                       │
+        │                            │                                         │                                  │                       │    │ <b>8</b>              │
+        │                            │                                         │                                  │                       │<───┘ pre_validate          │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │   9 schedule "CREATE_TX"   │
+        │                            │                                         │                                  │                       │ ───────────────────────────>
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │────┐
+        │                            │                                         │                                  │                       │                            │    │ <b>10</b>
+        │                            │                                         │                                  │                       │                            │<───┘ put_command, handling
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │           ╔══════════╗           │                       │                            │
+════════╪════════════════════════════╪═════════════════════════════════════════╪═══════════╣ CONTINUE ╠═══════════╪═══════════════════════╪════════════════════════════╪═══════════════════════════
+        │                            │                                         │           ╚══════════╝           │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │           11 response (response_code, tx_hash)           │                            │
+        │                            │                                         │ <─────────────────────────────────────────────────────────                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │────┐                                                     │                            │
+        │                            │                                         │    │ <b>12</b>                                           │                            │
+        │                            │                                         │<───┘ check response, convert_param                       │                            │
+        │                            │                                         │                                                          │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │ 13 response                             │                                  │                       │                            │
+        │ <─────────────────────────────────────────────────────────────────────                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │                                  │                       │                            │
+        │                            │                                         │     ╔══════════════════════╗     │                       │                            │
+════════╪════════════════════════════╪═════════════════════════════════════════╪═════╣ VoteUnconfirmedBlock ╠═════╪═══════════════════════╪════════════════════════════╪═══════════════════════════
+        │                            │                                         │     ╚══════════════════════╝     │                       │                            │
+      Client                     ┌───┴────┐                                 ┌──┴──┐                          ┌────┴────┐          ┌───────┴────────┐          ┌────────┴─────────┐
+        ┌─┐                      │Gunicorn│                                 │Sanic│                          │IconScore│          │ChannelTxCreator│          │BroadcastScheduler│
+        ║"│                      └────────┘                                 └─────┘                          └─────────┘          └────────────────┘          └──────────────────┘
+        └┬┘
+        ┌┼┐
+         │
+        ┌┴┐
+
+@startuml
+autonumber 
+
+actor Client
+
+box "RestService"
+    participant Gunicorn 
+    participant Sanic 
+end box
+
+box "ScoreService"
+    participant IconScore 
+end box
+
+box "ChannelService"
+    participant ChannelTxCreator
+    participant BroadcastScheduler
+end box
+
+== CREATE TX ==
+Client -> Gunicorn: worker listens tx request
+Gunicorn -> Sanic: IcxDispatcher routes request to method
+Sanic -> IconScore: validate tx 
+IconScore -> Sanic: response
+
+Sanic -> ChannelTxCreator: create_icx_tx
+ChannelTxCreator -> ChannelTxCreator: serialize tx
+ChannelTxCreator -> ChannelTxCreator: verify tx
+ChannelTxCreator -> ChannelTxCreator: pre_validate
+ChannelTxCreator -> BroadcastScheduler: schedule "CREATE_TX"
+BroadcastScheduler -> BroadcastScheduler: put_command, handling
+... CONTINUE ...
+
+ChannelTxCreator -> Sanic: response (response_code, tx_hash)
+Sanic -> Sanic: check response, convert_param
+Sanic -> Client: response
+== VoteUnconfirmedBlock ==
+
+@enduml
+
