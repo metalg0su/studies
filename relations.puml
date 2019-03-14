@@ -1,0 +1,69 @@
+@startuml
+
+
+' =================
+' == Declaration ==
+' =================
+
+cloud "HELLO WORLD" {
+    actor Iconist
+}
+
+node PEER_ENTITY{
+
+    frame tmp_frame {
+        () rabbitMQ
+        () gRPC
+        database "levelDB" {
+            [somethingInside]
+        }
+    }
+
+    package "PeerService" {
+        ' todo: frame or component. will be decided by passing times.
+        [PeerInnerService]
+        [PeerOuterService]
+        [CommonService?]
+    }
+
+    package "RestService" {
+        [Gunicorn]
+        [Sanic]
+    }
+
+    package "ChannelService" {
+        frame InnerService {
+            [ChannelTxCreator]
+            [ChannelTxReceiver]
+        }
+        [ChannelStateMachine]
+        [BlockManager]
+        [BroadcastScheduler]
+        [TimerService]
+        [PeerManager?]
+    }
+
+    package "IconScoreService" {
+        frame InnerService {
+            [TMP]
+        }
+    }
+
+}
+
+' ====================
+' ==  RELATIONSHIP  ==
+' ====================
+
+' RestService
+Iconist -> Gunicorn: Entry point
+Gunicorn -> Sanic
+
+' PeerService
+PeerInnerService - rabbitMQ
+PeerOuterService - gRPC
+
+' ChannelService
+' IconService
+
+@enduml
