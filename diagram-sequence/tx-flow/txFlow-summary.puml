@@ -82,73 +82,58 @@
 @startuml
 autonumber 
 
-actor Client
+actor Iconist
 
-box "myPeer"
+box "Breakfast..?" #ffaaaa
     participant RestService
-    participant Gunicorn
-    participant Sanic
+end box
 
+box "Peer" #aaffdd
     participant ChannelService
     participant ChannelTxCreator
     participant BroadcastScheduler
-    database BroadcastScheduler_Queue
+    participant ChannelInnerService
+    participant BlockManager
+'    participant ChannelStateMachine
 end box
 
-participant IconScoreService
-control gRPC
+database ScoreService
+entity PeerOuterService
 
-box "otherPeer"
-    database O_unconfirmedBlock_Queue
-    participant O_PeerOuterService
-    participant O_ChannelInnerService
-    participant O_BlockManager
-    participant O_ChannelStateMachine
-    participant O_BroadcastScheduler
-end box
 
-== CREATE TX ==
-Client -> Gunicorn: worker listens tx request
-Gunicorn -> Sanic: IcxDispatcher routes request to method
+== CREATE_TX == 
+Iconist -> RestService: Entry point (../api/v3/)
+RestService -> ScoreService: validation_transaction
+RestService <-- ScoreService: response_to_json_query
 
-' validation
-Sanic -> IconScore: validate tx
-IconScore -> Sanic: response
+RestService -> ChannelTxCreator: create_icx_tx
+note over ChannelTxCreator: serialize, verify, pre_validate Tx
+ChannelTxCreator -> BroadcastScheduler: comm: CREATE_TX
+RestService <-- ChannelTxCreator: tx_hash with status code.
 
-' create_icx_tx
-Sanic -> ChannelTxCreator: create_icx_tx
-ChannelTxCreator -> ChannelTxCreator: serialize tx
-ChannelTxCreator -> ChannelTxCreator: verify tx
-ChannelTxCreator -> ChannelTxCreator: pre_validate
-
-'BroadcastScheduler
-ChannelTxCreator -> BroadcastScheduler: schedule "CREATE_TX" job
-BroadcastScheduler -> BroadcastScheduler_Queue: push job to queue
-
-'---------------- check this.
-ChannelTxCreator -> Sanic: response (response_code, tx_hash)
-Sanic -> Sanic: check response, convert_param
-Sanic -> Client: response
-'---------------- check this.
-
-== VoteUnconfirmedBlock ==
-BroadcastScheduler_Queue -> gRPC: create_tx, send_tx_in_timer, send_tx_by_timer, AddTxList, make_message, then broadcast by gRPC
-note over gRPC: -number-of-audience-
+Iconist <-- RestService: response json result..
 
 ' Other peers
-gRPC -> O_PeerOuterService: request.block
-O_PeerOuterService -> O_ChannelInnerService: announced
-O_ChannelInnerService -> O_BlockManager: block_loads. unpacking by its block_version and height.
-O_BlockManager -> O_BlockManager: many if conditions
-O_BlockManager -> O_unconfirmedBlock_Queue: many if conditions
-O_BlockManager -> ChannelStateMachine: change status. LATER!
-O_BlockManager -> O_BlockManager: vote_as_peer
-O_BlockManager -> ScoreService..: invoke?
-O_BlockManager -> O_BroadcastScheduler: send method 'VoteUnconfirmedBlock'
-O_BroadcastScheduler -> OtherPeers: Broadcast. as many as they are.
+== VoteUnconfirmedBlock ==
+loop number-of-audience
+    BroadcastScheduler -> PeerOuterService: use gRPC. send request.block
+    ... The Other Peers ...
+    par parallel. in each peers..
+        PeerOuterService --> ChannelInnerService: announce block
+        ChannelInnerService -> BlockManager: unpacking block
+'        BlockManager -[#red]-> ChannelStateMachine: change status. LATER!
+        BlockManager -> BlockManager: vote_as_peer
+        BlockManager -> ScoreService: something
+        note left: invoke? validate?
+        BlockManager -> BroadcastScheduler: comm: 'VoteUnconfirmedBlock'
+        BroadcastScheduler -> PeerOuterService: Broadcast again to all
+    end
+end
 
-== END Receive Block with VoteUnconfirmedBlock ==
-note over OtherPeers: AnnounceUnconfirmedBlock. LATER!
+PeerOuterService --> ChannelInnerService: receive VoteUnconfirmedBlock again
+note over ChannelInnerService: LATER.. each peer counts VoteUnconfirmedBlock messages? Maybe.
+
+== AnnounceUnconfirmedBlock ==
 
 @enduml
 

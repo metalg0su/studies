@@ -1,161 +1,154 @@
 @startuml
-top to bottom direction
-'left to right direction
 
-' =================
-' == Declaration ==
-' =================
+actor Iconist as user
 
-'cloud "HELLO WORLD" {
-    actor Iconist
-'}
+package "RestService" {
+    user -right-> [Gunicorn]
+    [Gunicorn] -down-> [Sanic]
+    [Sanic] -down-> [Dispatcher]
+}
 
-' node PEER_ENTITY{
-
-    () rabbitMQ
-    () gRPC
-    [CommonService]
-'    [jsonRPC]
-
-    database DB {
-        [levelDB]
-    }
-
-    package "Peer" {
-        () PeerStub
-        ' todo: frame or component. will be decided by passing times.
-        [PeerService]
-        [PeerInnerService]
-        [PeerOuterService]
-    }
-
-    package "RestService" {
-        ' [RestService]
-        [Gunicorn] - [Sanic]
-        [Sanic] - [Dispatcher]
-    }
-
-    package "ChannelService" {
-        () ChannelStub
-        frame TX_group {
-            [TransactionSerializer]
-            [TransactionVerifier]
-        }
-'        [ChannelStateMachine]
-'        [TimerService]
+'' node PEER_ENTITY{
 '
-        frame "ChannelInnerService" {
-            () ChannelTxCreatorStub - [ChannelTxCreator]
-'            [ChannelTxReceiver]
-        }
+'    () rabbitMQ
+'    () gRPC
+'    [CommonService]
+''    [jsonRPC]
 '
-        frame "BlockManager" {
-'            [txQueue] #Yellow
-'            [unconfirmedBlockQueue] #Yellow
-'            [BlockChain]
-'            [BlockVersioner]
-'            [TransactionVersioner]
-'            [BlockGenerationScheduler]
-'            [BlockGenerationScheduler-Queue] #Yellow
-        }
-'
-        frame "BroadcastScheduler" {
-            [BroadcastScheduler_Queue] #Yellow
-            [storedTx_Queue] #Yellow
-
-            
-        }
-'
-'        frame "PeerM" {
-'            [PeerManager]
-'            [PeerListData]
-'        }
+'    database DB {
+'        [levelDB]
 '    }
 '
-    }
-
-    package "IconScoreService" {
-        () IconScoreStub
-        frame InnerService {
-            [IconServiceEngine]
-        }
-
-' }
-
-' ====================
-' ==  RELATIONSHIP  ==
-' ====================
+'    package "Peer" {
+'        () PeerStub
+'        ' todo: frame or component. will be decided by passing times.
+'        [PeerService]
+'        [PeerInnerService]
+'        [PeerOuterService]
+'    }
 '
-Iconist --> Gunicorn: Entry point (../api/v3/)
-Dispatcher --> IconScoreStub: validation_transaction
-IconScoreStub --> IconServiceEngine: some links
-Dispatcher <-- IconScoreStub: response_to_json_query
-
-Dispatcher --> ChannelTxCreatorStub: create_icx_tx
-ChannelTxCreator --> TransactionSerializer: serialize with tx_version
-ChannelTxCreator <-- TransactionSerializer: return Transaction Object
-ChannelTxCreator --> TransactionVerifier: give Tx Object and verify it
-' + pre_validate Tx...
-ChannelTxCreator --> BroadcastScheduler: comm: CREATE_TX
-Dispatcher <-- ChannelTxCreatorStub: response tx_hash with status code.
-
-Iconist <-- Gunicorn: response json result..
-
-'------------------------------------------
-
-BroadcastScheduler --> BroadcastScheduler_Queue: schedule Broadcast order
-BroadcastScheduler --> storedTx_Queue: put tx_item
-BroadcastScheduler --> gRPC: send Tx to Peer subscribed?
-gRPC --> PeerStub
-
-'Rest
-RestService - PeerService
-RestService - ChannelService
-RestService - ChannelTxCreator
-RestService - IconScoreService
-
-' PeerService
-PeerService -up- levelDB
-PeerInnerService -up- CommonService
-PeerOuterService -up- CommonService
-PeerService - ChannelService
-
-CommonService - gRPC
-CommonService - rabbitMQ
-
-' ChannelService
-ChannelService - PeerInnerService
-ChannelService - BlockManager
-ChannelService - BroadcastScheduler
-ChannelService - TimerService
-' ChannelService - NodeSubscriber
-ChannelService - ChannelInnerService
-ChannelService - ChannelStateMachine
-
-
-BlockManager - levelDB
-BlockManager - txQueue
-BlockManager - unconfirmedBlockQueue
-BlockManager - BlockChain
-BlockManager - BlockGenerationScheduler
-
-BlockGenerationScheduler - BlockGenerationScheduler_Queue
-
-' ChannelInnerService - rabbitMQ
-ChannelInnerService - TransactionVersioner
-ChannelInnerService - BroadcastScheduler
-ChannelInnerService - ChannelTxCreator
-ChannelInnerService - ChannelTxReceiver
-
-PeerManager - ChannelService
-PeerManager - PeerListData
-
-BlockChain - BlockVersioner
-BlockChain - TransactionVersioner
-BlockChain - levelDB
-
-BroadcastScheduler - TimerService
-BroadcastScheduler - PeerOuterService
-
+'
+'    package "ChannelService" {
+'        () ChannelStub
+'        frame TX_group {
+'            [TransactionSerializer]
+'            [TransactionVerifier]
+'        }
+''        [ChannelStateMachine]
+''        [TimerService]
+''
+'        frame "ChannelInnerService" {
+'            () ChannelTxCreatorStub - [ChannelTxCreator]
+''            [ChannelTxReceiver]
+'        }
+''
+'        frame "BlockManager" {
+''            [txQueue] #Yellow
+''            [unconfirmedBlockQueue] #Yellow
+''            [BlockChain]
+''            [BlockVersioner]
+''            [TransactionVersioner]
+''            [BlockGenerationScheduler]
+''            [BlockGenerationScheduler-Queue] #Yellow
+'        }
+''
+'        frame "BroadcastScheduler" {
+'            [BroadcastScheduler_Queue] #Yellow
+'            [storedTx_Queue] #Yellow
+'
+'
+'        }
+''
+''        frame "PeerM" {
+''            [PeerManager]
+''            [PeerListData]
+''        }
+''    }
+''
+'    }
+'
+'    package "IconScoreService" {
+'        () IconScoreStub
+'        frame InnerService {
+'            [IconServiceEngine]
+'        }
+'
+'' }
+'
+'' ====================
+'' ==  RELATIONSHIP  ==
+'' ====================
+''
+'Iconist --> Gunicorn: Entry point (../api/v3/)
+'Dispatcher --> IconScoreStub: validation_transaction
+'IconScoreStub --> IconServiceEngine: some links
+'Dispatcher <-- IconScoreStub: response_to_json_query
+'
+'Dispatcher --> ChannelTxCreatorStub: create_icx_tx
+'ChannelTxCreator --> TransactionSerializer: serialize with tx_version
+'ChannelTxCreator <-- TransactionSerializer: return Transaction Object
+'ChannelTxCreator --> TransactionVerifier: give Tx Object and verify it
+'' + pre_validate Tx...
+'ChannelTxCreator --> BroadcastScheduler: comm: CREATE_TX
+'Dispatcher <-- ChannelTxCreatorStub: response tx_hash with status code.
+'
+'Iconist <-- Gunicorn: response json result..
+'
+''------------------------------------------
+'
+'BroadcastScheduler --> BroadcastScheduler_Queue: schedule Broadcast order
+'BroadcastScheduler --> storedTx_Queue: put tx_item
+'BroadcastScheduler --> gRPC: send Tx to Peer subscribed?
+'gRPC --> PeerStub
+'
+''Rest
+'RestService - PeerService
+'RestService - ChannelService
+'RestService - ChannelTxCreator
+'RestService - IconScoreService
+'
+'' PeerService
+'PeerService -up- levelDB
+'PeerInnerService -up- CommonService
+'PeerOuterService -up- CommonService
+'PeerService - ChannelService
+'
+'CommonService - gRPC
+'CommonService - rabbitMQ
+'
+'' ChannelService
+'ChannelService - PeerInnerService
+'ChannelService - BlockManager
+'ChannelService - BroadcastScheduler
+'ChannelService - TimerService
+'' ChannelService - NodeSubscriber
+'ChannelService - ChannelInnerService
+'ChannelService - ChannelStateMachine
+'
+'
+'BlockManager - levelDB
+'BlockManager - txQueue
+'BlockManager - unconfirmedBlockQueue
+'BlockManager - BlockChain
+'BlockManager - BlockGenerationScheduler
+'
+'BlockGenerationScheduler - BlockGenerationScheduler_Queue
+'
+'' ChannelInnerService - rabbitMQ
+'ChannelInnerService - TransactionVersioner
+'ChannelInnerService - BroadcastScheduler
+'ChannelInnerService - ChannelTxCreator
+'ChannelInnerService - ChannelTxReceiver
+'
+'PeerManager - ChannelService
+'PeerManager - PeerListData
+'
+'BlockChain - BlockVersioner
+'BlockChain - TransactionVersioner
+'BlockChain - levelDB
+'
+'BroadcastScheduler - TimerService
+'BroadcastScheduler - PeerOuterService
+'
 
 @enduml

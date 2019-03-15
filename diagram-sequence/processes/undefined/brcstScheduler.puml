@@ -8,8 +8,9 @@ package BroadcastScheduler {
 }
 
 () tmp_input -up-> cmd
-cmd -> Queue: put
-Queue -down-> Handler: get Command with Action(cb)
+cmd -> Queue: put Command with Callback
+Queue -up-> Handler: watching
+Handler -down-> Queue: get Command with Action(cb)
 Handler - Method: mapping
 
 Method -> () tmp_output

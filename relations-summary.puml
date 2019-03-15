@@ -1,0 +1,140 @@
+@startuml
+
+'cloud "HELLO WORLD" {
+    actor Iconist
+'}
+
+' node PEER_ENTITY{
+
+    () rabbitMQ
+    () gRPC
+    [CommonService]
+'    [jsonRPC]
+
+    database levelDB
+
+    package "Peer" {
+        () PeerStub
+        ' todo: frame or component. will be decided by passing times.
+        [PeerService]
+        [PeerInnerService]
+        [PeerOuterService]
+    }
+
+    package "RestService" {
+        ' [RestService]
+        [Gunicorn] - [Sanic]
+        [Sanic] - [Dispatcher]
+    }
+
+    package "ChannelService" {
+        () ChannelStub
+        frame TX_group {
+            [TransactionSerializer]
+            [TransactionVerifier]
+        }
+'        [ChannelStateMachine]
+'        [TimerService]
+'
+        frame "ChannelInnerService" {
+            () ChannelTxCreatorStub - [ChannelTxCreator]
+'            [ChannelTxReceiver]
+        }
+'
+        frame "BlockManager" {
+        }
+'
+        frame "BroadcastScheduler" {
+            [BroadcastScheduler_Queue] #Yellow
+            [storedTx_Queue] #Yellow
+
+            
+        }
+'
+'        frame "PeerM" {
+'            [PeerManager]
+'            [PeerListData]
+'        }
+'    }
+'
+    }
+
+    package "IconScoreService" {
+        () IconScoreStub
+        frame InnerService {
+            [IconServiceEngine]
+        }
+
+' }
+
+' ====================
+' ==  RELATIONSHIP  ==
+' ====================
+
+Iconist --> RestService: Entry point (../api/v3/)
+RestService --> ScoreService: validation_transaction
+RestService <-- ScoreService: response_to_json_query
+
+Dispatcher --> ChannelTxCreator: create_icx_tx
+ChannelTxCreator --> BroadcastScheduler: comm: CREATE_TX
+RestService <-- ChannelTxCreator: tx_hash with status code.
+
+Iconist <-- RestService: response json result..
+
+
+BroadcastScheduler --> BroadcastScheduler_Queue: schedule Broadcast order
+BroadcastScheduler --> storedTx_Queue: put tx_item
+BroadcastScheduler --> gRPC: send Tx to Peer subscribed?
+gRPC --> PeerStub
+
+'Rest
+RestService - PeerService
+RestService - ChannelService
+RestService - ChannelTxCreator
+RestService - IconScoreService
+
+' PeerService
+PeerService -up- levelDB
+PeerInnerService -up- CommonService
+PeerOuterService -up- CommonService
+PeerService - ChannelService
+
+CommonService - gRPC
+CommonService - rabbitMQ
+
+' ChannelService
+ChannelService - PeerInnerService
+ChannelService - BlockManager
+ChannelService - BroadcastScheduler
+ChannelService - TimerService
+' ChannelService - NodeSubscriber
+ChannelService - ChannelInnerService
+ChannelService - ChannelStateMachine
+
+
+BlockManager - levelDB
+BlockManager - txQueue
+BlockManager - unconfirmedBlockQueue
+BlockManager - BlockChain
+BlockManager - BlockGenerationScheduler
+
+BlockGenerationScheduler - BlockGenerationScheduler_Queue
+
+' ChannelInnerService - rabbitMQ
+ChannelInnerService - TransactionVersioner
+ChannelInnerService - BroadcastScheduler
+ChannelInnerService - ChannelTxCreator
+ChannelInnerService - ChannelTxReceiver
+
+PeerManager - ChannelService
+PeerManager - PeerListData
+
+BlockChain - BlockVersioner
+BlockChain - TransactionVersioner
+BlockChain - levelDB
+
+BroadcastScheduler - TimerService
+BroadcastScheduler - PeerOuterService
+
+
+@enduml

@@ -109,6 +109,7 @@ box "ChannelInnerService" #ccf9f2
 end box 
 
 create ChannelService
+...
 PeerService -> ChannelService: execute New Process
 
 '---------- CHANNEL START 
@@ -120,7 +121,7 @@ ChannelService -> ChannelInnerService: init.
 create ChannelStateMachine
 ChannelService -> ChannelStateMachine: set init_state and proceed..?
 ChannelService -> PeerService: ask channel info detail
-PeerService -> ChannelService: give channel info detail
+PeerService --> ChannelService: give channel info detail
 
 '---------- initialize channel by detailed info
 create PeerManager
@@ -145,7 +146,7 @@ note over IconScoreService: MOVE TO ..
 
 ChannelInnerService -> rabbitMQd: bind and ready to listen?
 ChannelInnerService -> BlockManager: ask tx_versioner of its blockchain
-BlockManager -> ChannelInnerService: give tx_versioner of its blockchain
+BlockManager --> ChannelInnerService: give tx_versioner of its blockchain
 
 '---------- Initialize Sub ServiceS 
 create ChannelTxCreator
