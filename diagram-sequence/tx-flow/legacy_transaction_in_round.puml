@@ -1,0 +1,78 @@
+
+
+@startuml transaction in round
+skinparam style strictuml
+
+participant client
+box "MyPeer" #aaaaff
+    participant RestServer
+    participant ChannelService
+    participant BroadcastScheduler
+    participant BlockManager
+end box
+
+participant ScoreService
+activate ScoreService
+
+participant PeerOuterService
+activate PeerOuterService
+note over PeerOuterService: agency?
+
+
+box "LeaderPeer" #faaaaa
+    activate L_BlockManager
+    participant L_BlockManager
+end box
+
+' client send tx to peer
+activate client
+client -> RestServer : icx_sendTransaction
+activate RestServer
+RestServer -> ScoreService : validate_transaction
+RestServer -> ChannelService : create_icx_tx
+destroy RestServer
+activate ChannelService
+RestServer --> client : tx_hash \n(icx_sendTransaction)
+destroy client
+
+== peer broadcast tx to others ==
+ChannelService -> BroadcastScheduler : schedule_job (AddTxList)
+activate BroadcastScheduler
+BroadcastScheduler -> PeerOuterService : AddTxList
+BroadcastScheduler -> L_BlockManager: AddTxList
+PeerOuterService -> ChannelService : add_tx_list
+note right: what is this
+ChannelService -> BlockManager : add_tx_obj
+activate BlockManager
+note over BlockManager
+add tx queue 
+in block manager
+end note
+note over BlockManager
+block_manager has
+consensus loop
+for make block or vote
+if peer == L_BlockManager:
+make block and broadcast
+end note
+
+== leader makes block ==
+L_BlockManager -> BroadcastScheduler : schedule_job (AnnounceUnconfirmedBlock)
+BroadcastScheduler -> PeerOuterService : AnnounceUnconfirmedBlock
+PeerOuterService -> ChannelService : announce_unconfirmed_block
+BlockManager -> ScoreService : score_invoke (for verify)
+BlockManager -> BroadcastScheduler : schedule_job (VoteUnconfirmedBlock)
+BroadcastScheduler -> PeerOuterService : VoteUnconfirmedBlock
+BroadcastScheduler -> L_BlockManager : VoteUnconfirmedBlock
+PeerOuterService -> ChannelService : vote_unconfirmed_block
+ChannelService -> BlockManager : vote_to_block
+
+== In the next round, block is confirmed ==
+L_BlockManager -> BroadcastScheduler : schedule_job (AnnounceUnconfirmedBlock)
+note right: N+1 round Block
+BroadcastScheduler -> PeerOuterService : AnnounceUnconfirmedBlock
+PeerOuterService -> ChannelService : announce_unconfirmed_block
+ChannelService -> BlockManager : add_unconfirmed_block
+BlockManager -> BlockManager : confirm_block (N round Blocks)
+
+@enduml

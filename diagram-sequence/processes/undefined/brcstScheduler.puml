@@ -1,0 +1,16 @@
+'stash
+@startuml
+package BroadcastScheduler {
+    () Command as cmd
+    database Queue
+    [Handler]
+    [Method]
+}
+
+() tmp_input -up-> cmd
+cmd -> Queue: put
+Queue -down-> Handler: get Command with Action(cb)
+Handler - Method: mapping
+
+Method -> () tmp_output
+@enduml
