@@ -8,65 +8,56 @@ package "RestService" {
     [Sanic] -down-> [Dispatcher]
 }
 
-'' node PEER_ENTITY{
+database levelDB
+
+package "Peer" {
+    () PeerStub
+    ' todo: frame or component. will be decided by passing times.
+    [PeerService]
+    [PeerInnerService]
+    [PeerOuterService]
+}
+
+
+    package "ChannelService" {
+        () ChannelStub
+        frame TX_group {
+            [TransactionSerializer]
+            [TransactionVerifier]
+        }
+'        [ChannelStateMachine]
+'        [TimerService]
 '
-'    () rabbitMQ
-'    () gRPC
-'    [CommonService]
-''    [jsonRPC]
+        frame "ChannelInnerService" {
+            () ChannelTxCreatorStub - [ChannelTxCreator]
+'            [ChannelTxReceiver]
+        }
 '
-'    database DB {
-'        [levelDB]
+        frame "BlockManager" {
+'            [txQueue] #Yellow
+'            [unconfirmedBlockQueue] #Yellow
+'            [BlockChain]
+'            [BlockVersioner]
+'            [TransactionVersioner]
+'            [BlockGenerationScheduler]
+'            [BlockGenerationScheduler-Queue] #Yellow
+        }
+'
+        frame "BroadcastScheduler" {
+            [BroadcastScheduler_Queue] #Yellow
+            [storedTx_Queue] #Yellow
+
+
+        }
+'
+'        frame "PeerM" {
+'            [PeerManager]
+'            [PeerListData]
+'        }
 '    }
 '
-'    package "Peer" {
-'        () PeerStub
-'        ' todo: frame or component. will be decided by passing times.
-'        [PeerService]
-'        [PeerInnerService]
-'        [PeerOuterService]
-'    }
-'
-'
-'    package "ChannelService" {
-'        () ChannelStub
-'        frame TX_group {
-'            [TransactionSerializer]
-'            [TransactionVerifier]
-'        }
-''        [ChannelStateMachine]
-''        [TimerService]
-''
-'        frame "ChannelInnerService" {
-'            () ChannelTxCreatorStub - [ChannelTxCreator]
-''            [ChannelTxReceiver]
-'        }
-''
-'        frame "BlockManager" {
-''            [txQueue] #Yellow
-''            [unconfirmedBlockQueue] #Yellow
-''            [BlockChain]
-''            [BlockVersioner]
-''            [TransactionVersioner]
-''            [BlockGenerationScheduler]
-''            [BlockGenerationScheduler-Queue] #Yellow
-'        }
-''
-'        frame "BroadcastScheduler" {
-'            [BroadcastScheduler_Queue] #Yellow
-'            [storedTx_Queue] #Yellow
-'
-'
-'        }
-''
-''        frame "PeerM" {
-''            [PeerManager]
-''            [PeerListData]
-''        }
-''    }
-''
-'    }
-'
+    }
+
 '    package "IconScoreService" {
 '        () IconScoreStub
 '        frame InnerService {
@@ -152,3 +143,4 @@ package "RestService" {
 '
 
 @enduml
+

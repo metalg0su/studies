@@ -48,7 +48,7 @@
             [BroadcastScheduler_Queue] #Yellow
             [storedTx_Queue] #Yellow
 
-            
+
         }
 '
 '        frame "PeerM" {
@@ -138,3 +138,4 @@ BroadcastScheduler - PeerOuterService
 
 
 @enduml
+
