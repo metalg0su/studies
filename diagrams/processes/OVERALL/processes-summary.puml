@@ -1,42 +1,8 @@
-
-       ┌─┐
-       ║"│
-       └┬┘
-       ┌┼┐
-        │            ┌───────────┐
-       ┌┴┐           │PeerService│
-      User           └─────┬─────┘
-       │ 1 $ loop peer ... │
-       │ ─────────────────>│
-       │                   │
-       │                   │2 execute New Process. ┌───────────┐
-       │                   │──────────────────────>│RestService│
-       │                   │                       └─────┬─────┘
-       │                   │                  ╔══════════════════════╗
-       │                   │                  ║MOVE TO 'REST' digrm ░║
-       │                   │                  ╚══════════════════════╝
-       │                   │            3 execute New Process             ┌──────────────┐
-       │                   │─────────────────────────────────────────────>│ChannelService│
-       │                   │                             │                └──────┬───────┘
-       │                   │                             │                  ╔════════════╗
-       │                   │                             │                  ║MOVE TO .. ░║
-       │                   │                             │                  ╚════════════╝
-       │                   │                             │                         4 execute New Process ┌────────────────┐
-       │                   │                             │                         ─────────────────────>│IconScoreService│
-       │                   │                             │                       │                       └───────┬────────┘
-       │                   │                             │                       │                          ╔════════════╗
-       │                   │                                                                                ║MOVE TO .. ░║
-      User           ┌─────┴─────┐                 ┌─────┴─────┐          ┌──────┴───────┐                  ╚════════════╝
-       ┌─┐           │PeerService│                 │RestService│          │ChannelService│
-       ║"│           └───────────┘                 └───────────┘          └──────────────┘
-       └┬┘
-       ┌┼┐
-        │
-       ┌┴┐
-
 @startuml
-autonumber 
+autonumber
+hide footbox
 
+' ===== DIAGRAM
 actor User
 
 User -> PeerService: $ loop peer ...
@@ -50,4 +16,14 @@ create IconScoreService
 ChannelService -> IconScoreService: execute New Process
 note over IconScoreService: MOVE TO ..
 
+== Process Summary ==
+note over User, IconScoreService #aaffaa
+    - launcher(peer)
+        -- launcher(rest)
+        -- launcher(channel)
+            --- launcher(score)
+            --- TxCreator
+            --- TxReciever
+            --- BroadcastScheduler
+end note
 @enduml
