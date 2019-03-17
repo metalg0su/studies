@@ -1,5 +1,14 @@
 @startuml
 
+'legend
+'    |= Color |= Type |= Description |
+'    | <size:11><back:#Crimson>           </back></size>|    <&arrow-right> | Example 1 |
+'    | <size:11><back:#LightSeaGreen>           </back></size>|    <&arrow-right> | Example 2 |
+'    | <size:11><back:#DarkGreen>           </back></size>|    <&arrow-right> | Example 3 |
+'    | <size:11><back:#YellowGreen>           </back></size>|    <&box> | Example 4 |
+'    | <size:11><back:#Chocolate>           </back></size>|    <&box> | Example 5 |
+'endlegend
+
 actor Iconist as user
 
 package "RestService" {
@@ -8,64 +17,109 @@ package "RestService" {
     [Sanic] -down-> [Dispatcher]
 }
 
-database levelDB
-
-package "Peer" {
-    () PeerStub
-    ' todo: frame or component. will be decided by passing times.
+' Peer
+() PeerStub
+package {
     [PeerService]
-    [PeerInnerService]
-    [PeerOuterService]
+    PeerStub -down- [PeerService]
+    [PeerService] -down- [PeerInnerService]
+    [PeerService] -down- [PeerOuterService]
 }
 
+' Channel
+package {
+        [PeerStub] )-down- [ChannelService]: get channel detail
+        [ChannelService]
+        [ChannelService] -down- [TimerService]
 
-    package "ChannelService" {
-        () ChannelStub
-        frame TX_group {
-            [TransactionSerializer]
-            [TransactionVerifier]
+        ' ChannelInnerService
+        frame {
+            [ChannelService] -down- [ChnnelInnerService]
+            [ChnnelInnerService] -left- [ChannelTxReciever]
+            [ChnnelInnerService] -down- [ChannelTxCreater]
         }
-'        [ChannelStateMachine]
-'        [TimerService]
-'
-        frame "ChannelInnerService" {
-            () ChannelTxCreatorStub - [ChannelTxCreator]
-'            [ChannelTxReceiver]
+
+        ' PeerManager
+        frame {
+            [ChannelService] -down- [PeerManager]
+            [PeerManager] -down- [PeerListData]
         }
-'
-        frame "BlockManager" {
-'            [txQueue] #Yellow
-'            [unconfirmedBlockQueue] #Yellow
-'            [BlockChain]
-'            [BlockVersioner]
-'            [TransactionVersioner]
-'            [BlockGenerationScheduler]
-'            [BlockGenerationScheduler-Queue] #Yellow
+
+        ' Broadcast
+        frame {
+            [BroadcastScheduler]
+
+            [ChannelService] -down- [BroadcastScheduler]
+            [TimerService] .right. [BroadcastScheduler]: check broadcast time\n and broadcast to peers
+
+            database "Broadscheduler\nQueue" as BS_q
+            database "stored_tx" as tx_q
+            [BroadcastScheduler] -down- BS_q: put commands\n to plan schedule
+            [BroadcastScheduler] -down- tx_q: put Tx\n before send
         }
-'
-        frame "BroadcastScheduler" {
-            [BroadcastScheduler_Queue] #Yellow
-            [storedTx_Queue] #Yellow
+
+        ' BlockManager
+        frame {
+            [ChannelService] -down- [BlockManager]
+        }
 
 
-        }
-'
-'        frame "PeerM" {
-'            [PeerManager]
-'            [PeerListData]
+}
+
+'' connections
+[PeerService] -right-( () ChannelInnerStub
+() ChannelInnerStub -- [ChnnelInnerService]
+[PeerService] --( () ChannelTxRecieverStub
+() ChannelTxRecieverStub -down- [ChannelTxReciever]
+
+
+'database levelDB
+
+'PeerService --( () IconScoreStub
+
+'() ChannelServiceStub
+'package {
+'    ChannelServiceStub -down- [ChannelService]
+'        frame {
+'            ChannelService - [BlockManager]
+''            [txQueue] #Yellow
+''            [unconfirmedBlockQueue] #Yellow
+''            [BlockChain]
+''            [BlockVersioner]
+''            [TransactionVersioner]
+''            [BlockGenerationScheduler]
+''            [BlockGenerationScheduler-Queue] #Yellow
 '        }
+'
+''        () ChannelTxCreatorStub - [ChannelTxCreator]
+''        () ChannelTxReceiverStub - [ChannelTxReceiver]
+''
+''        [ChannelStateMachine]
+''        [TimerService]
 '    }
-'
-    }
 
-'    package "IconScoreService" {
-'        () IconScoreStub
-'        frame InnerService {
-'            [IconServiceEngine]
+
+'        frame {
+'            control TransactionSerializer
+'            control TransactionVerifier
 '        }
+
+
+''
+'        frame "BroadcastScheduler" {
+'            [BroadcastScheduler_Queue] #Yellow
+'            [storedTx_Queue] #Yellow
 '
-'' }
 '
+'        }
+
+
+() IconScoreStub
+package {
+    frame {
+        [IconServiceEngine]
+}
+
 '' ====================
 '' ==  RELATIONSHIP  ==
 '' ====================
