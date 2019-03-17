@@ -1,4 +1,5 @@
 @startuml
+skinparam linetype polyline
 
 'legend
 '    |= Color |= Type |= Description |
@@ -9,71 +10,113 @@
 '    | <size:11><back:#Chocolate>           </back></size>|    <&box> | Example 5 |
 'endlegend
 
-actor Iconist as user
+'===== ===== DIAGRAM ===== =====
 
-package "RestService" {
-    user -right-> [Gunicorn]
-    [Gunicorn] -down-> [Sanic]
-    [Sanic] -down-> [Dispatcher]
+actor Iconist as user
+() gRPC
+' Breakfast?
+package {
+    [RestService]
+
+    control Listener as worker << Gunicorn >>
+    [Web Server] as server << Sanic >>
+
+    [RestService] -down- worker
+    user -right-> worker: Entry Point\n (api/v3/...)
+    worker -right-> server : route
+    server -( gRPC: Dispatch
 }
 
+' Other stuffs
+database blockDB <<levelDB\n key: value storage>>
+() rabbitMQ
+
 ' Peer
-() PeerStub
 package {
-    [PeerService]
-    PeerStub -down- [PeerService]
-    [PeerService] -down- [PeerInnerService]
-    [PeerService] -down- [PeerOuterService]
+    [PeerService] <<Defines Peer Type>>
+    rabbitMQ )-down- [PeerService]
+
+    [PeerInnerService] << Provides Peer-related info? >>
+    [PeerService] .down. [PeerInnerService]: get channel info?
+    [PeerOuterService] <<Handling Outside Requests>>
+    [PeerService] <-down- [PeerOuterService]
+    gRPC )- [PeerOuterService]
 }
 
 ' Channel
 package {
-        [PeerStub] )-down- [ChannelService]: get channel detail
+        rabbitMQ )-down- [ChannelService]: get channel detail
         [ChannelService]
+        [TimerService] <<State-related>>
         [ChannelService] -down- [TimerService]
 
         ' ChannelInnerService
         frame {
-            [ChannelService] -down- [ChnnelInnerService]
-            [ChnnelInnerService] -left- [ChannelTxReciever]
-            [ChnnelInnerService] -down- [ChannelTxCreater]
+            [ChannelInnerService] << Dispatches\n to the Others>>
+            [ChannelService] <-down- [ChannelInnerService]
+
+            () ChannelTxReciever as txRec
+            () ChannelTxCreater as txCre
+
+            txRec -[hidden]right- txCre
+            [ChannelInnerService] -down- txRec
+            [ChannelInnerService] -- txCre: create_icx_tx
         }
 
         ' PeerManager
         frame {
+            [PeerManager] <<Provide Other Peers' info>>
             [ChannelService] -down- [PeerManager]
+            [PeerListData] <<peer_info,\n complant rule,\n ... >>
             [PeerManager] -down- [PeerListData]
         }
 
         ' Broadcast
         frame {
-            [BroadcastScheduler]
-
-            [ChannelService] -down- [BroadcastScheduler]
-            [TimerService] .right. [BroadcastScheduler]: check broadcast time\n and broadcast to peers
+            [BroadcastScheduler] <<Broadcast Tx\n to other peers>>
+            [ChannelService] -- [BroadcastScheduler]
+            [TimerService] .right. [BroadcastScheduler]: check broadcast time
 
             database "Broadscheduler\nQueue" as BS_q
             database "stored_tx" as tx_q
+            BS_q -[hidden]r- tx_q
             [BroadcastScheduler] -down- BS_q: put commands\n to plan schedule
             [BroadcastScheduler] -down- tx_q: put Tx\n before send
         }
 
         ' BlockManager
         frame {
+            [BlockManager] <<Controls Block>>
             [ChannelService] -down- [BlockManager]
+
+            [Epoch] << Round-related >>
+            [BlockManager] .left. [Epoch]
+            [BlockManager] .right. [BlockGenerationScheduler]
+
+            database txQueue as BM_q <<AgingCache:\n Block Timestamp>>
+            database "unconfirmedBlock\nQueue" as u_q
+            database "CandidateBlocks" as candidate
+
+            [BlockManager] -- BM_q
+            [BlockManager] -- u_q: Stored Undefined block
+            [BlockManager] -- candidate: Stored Next block
+
+            [BlockChain] <<Confirmed Block>>
+            [BlockManager] -- [BlockChain]
+            [BlockChain] -- blockDB: store confirmed block
+
         }
 
 
 }
 
 '' connections
-[PeerService] -right-( () ChannelInnerStub
-() ChannelInnerStub -- [ChnnelInnerService]
-[PeerService] --( () ChannelTxRecieverStub
-() ChannelTxRecieverStub -down- [ChannelTxReciever]
+'[PeerService] -right-( () ChannelInnerStub
+'() ChannelInnerStub -- [ChannelInnerService]
+'[PeerService] --( () ChannelTxRecieverStub
+'() ChannelTxRecieverStub -down- [ChannelTxReciever]
 
 
-'database levelDB
 
 'PeerService --( () IconScoreStub
 
@@ -114,87 +157,11 @@ package {
 '        }
 
 
-() IconScoreStub
-package {
-    frame {
-        [IconServiceEngine]
-}
-
-'' ====================
-'' ==  RELATIONSHIP  ==
-'' ====================
-''
-'Iconist --> Gunicorn: Entry point (../api/v3/)
-'Dispatcher --> IconScoreStub: validation_transaction
-'IconScoreStub --> IconServiceEngine: some links
-'Dispatcher <-- IconScoreStub: response_to_json_query
-'
-'Dispatcher --> ChannelTxCreatorStub: create_icx_tx
-'ChannelTxCreator --> TransactionSerializer: serialize with tx_version
-'ChannelTxCreator <-- TransactionSerializer: return Transaction Object
-'ChannelTxCreator --> TransactionVerifier: give Tx Object and verify it
-'' + pre_validate Tx...
-'ChannelTxCreator --> BroadcastScheduler: comm: CREATE_TX
-'Dispatcher <-- ChannelTxCreatorStub: response tx_hash with status code.
-'
-'Iconist <-- Gunicorn: response json result..
-'
-''------------------------------------------
-'
-'BroadcastScheduler --> BroadcastScheduler_Queue: schedule Broadcast order
-'BroadcastScheduler --> storedTx_Queue: put tx_item
-'BroadcastScheduler --> gRPC: send Tx to Peer subscribed?
-'gRPC --> PeerStub
-'
-''Rest
-'RestService - PeerService
-'RestService - ChannelService
-'RestService - ChannelTxCreator
-'RestService - IconScoreService
-'
-'' PeerService
-'PeerService -up- levelDB
-'PeerInnerService -up- CommonService
-'PeerOuterService -up- CommonService
-'PeerService - ChannelService
-'
-'CommonService - gRPC
-'CommonService - rabbitMQ
-'
-'' ChannelService
-'ChannelService - PeerInnerService
-'ChannelService - BlockManager
-'ChannelService - BroadcastScheduler
-'ChannelService - TimerService
-'' ChannelService - NodeSubscriber
-'ChannelService - ChannelInnerService
-'ChannelService - ChannelStateMachine
-'
-'
-'BlockManager - levelDB
-'BlockManager - txQueue
-'BlockManager - unconfirmedBlockQueue
-'BlockManager - BlockChain
-'BlockManager - BlockGenerationScheduler
-'
-'BlockGenerationScheduler - BlockGenerationScheduler_Queue
-'
-'' ChannelInnerService - rabbitMQ
-'ChannelInnerService - TransactionVersioner
-'ChannelInnerService - BroadcastScheduler
-'ChannelInnerService - ChannelTxCreator
-'ChannelInnerService - ChannelTxReceiver
-'
-'PeerManager - ChannelService
-'PeerManager - PeerListData
-'
-'BlockChain - BlockVersioner
-'BlockChain - TransactionVersioner
-'BlockChain - levelDB
-'
-'BroadcastScheduler - TimerService
-'BroadcastScheduler - PeerOuterService
-'
+'() IconScoreStub
+'package {
+'    frame {
+'        [IconServiceEngine]
+'}
 
 @enduml
 
