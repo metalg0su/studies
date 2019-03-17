@@ -1,5 +1,4 @@
 @startuml
-skinparam linetype polyline
 
 'legend
 '    |= Color |= Type |= Description |
@@ -12,156 +11,104 @@ skinparam linetype polyline
 
 '===== ===== DIAGRAM ===== =====
 
+title Relationship Between Components
+
+' Other stuffs
 actor Iconist as user
+note top: Http Request!
+
 () gRPC
+() rabbitMQ << Singleton >>
+
+database blockDB <<levelDB\n key: value storage>>
+
 ' Breakfast?
-package {
-    [RestService]
+package REST {
+    collections RestService << Gateway of API call >> #ffaaaa
 
     control Listener as worker << Gunicorn >>
     [Web Server] as server << Sanic >>
 
-    [RestService] -down- worker
+    RestService .down. worker
+    RestService .down. server
+
     user -right-> worker: Entry Point\n (api/v3/...)
     worker -right-> server : route
     server -( gRPC: Dispatch
 }
 
-' Other stuffs
-database blockDB <<levelDB\n key: value storage>>
-() rabbitMQ
-
 ' Peer
-package {
-    [PeerService] <<Defines Peer Type>>
-    rabbitMQ )-down- [PeerService]
+package PEER {
+    collections PeerService <<Defines Peer Type>> #aaffaa
+    rabbitMQ )-left- PeerService: Stub-Skel Connection
 
     [PeerInnerService] << Provides Peer-related info? >>
-    [PeerService] .down. [PeerInnerService]: get channel info?
+    PeerService -[dotted]down- [PeerInnerService]: get channel info?
+
     [PeerOuterService] <<Handling Outside Requests>>
-    [PeerService] <-down- [PeerOuterService]
+    PeerService <-down- [PeerOuterService]
+
     gRPC )- [PeerOuterService]
 }
 
 ' Channel
-package {
-        rabbitMQ )-down- [ChannelService]: get channel detail
-        [ChannelService]
+package CHANNEL {
+        collections ChannelService << Channel Layer >> #aaaaff
+        rabbitMQ )-left- ChannelService: Stub-Skel Connection
         [TimerService] <<State-related>>
-        [ChannelService] -down- [TimerService]
 
         ' ChannelInnerService
-        frame {
-            [ChannelInnerService] << Dispatches\n to the Others>>
-            [ChannelService] <-down- [ChannelInnerService]
+        [ChannelInnerService] << Receives gRPC Request >>
+        [ChannelInnerService] -[hidden]r- [PeerManager]
+        ChannelService <-[bold]up- [ChannelInnerService]
 
-            () ChannelTxReciever as txRec
-            () ChannelTxCreater as txCre
-
-            txRec -[hidden]right- txCre
-            [ChannelInnerService] -down- txRec
-            [ChannelInnerService] -- txCre: create_icx_tx
-        }
+        ' TxInnerServices
+        () "Tx\nReciever" as txRec
+        () "Tx\nCreater" as txCre
+        txCre --[hidden]left-- txRec
+        [ChannelInnerService] -up- txCre: create_icx_tx
+        [ChannelInnerService] -up- txRec
 
         ' PeerManager
-        frame {
-            [PeerManager] <<Provide Other Peers' info>>
-            [ChannelService] -down- [PeerManager]
-            [PeerListData] <<peer_info,\n complant rule,\n ... >>
-            [PeerManager] -down- [PeerListData]
-        }
+        [PeerManager] <<Provides Other Peers' data>>
+        ChannelService -up- [PeerManager]
+'        [PeerListData] <<peer_info,\n complant rule,\n ... >>
+'        [PeerManager] -up- [PeerListData]
 
         ' Broadcast
-        frame {
-            [BroadcastScheduler] <<Broadcast Tx\n to other peers>>
-            [ChannelService] -- [BroadcastScheduler]
-            [TimerService] .right. [BroadcastScheduler]: check broadcast time
+        [BroadcastScheduler] <<Broadcast Tx\n to Other Peers>>
+        ChannelService -right- [BroadcastScheduler]
+        [BroadcastScheduler] .up. [TimerService]: check broadcast time
 
-            database "Broadscheduler\nQueue" as BS_q
-            database "stored_tx" as tx_q
-            BS_q -[hidden]r- tx_q
-            [BroadcastScheduler] -down- BS_q: put commands\n to plan schedule
-            [BroadcastScheduler] -down- tx_q: put Tx\n before send
-        }
+        ' Broadcast Queues
+'        database "Broadscheduler\nQueue" as BS_q
+'        database "stored_tx" as tx_q
+'        BS_q -[hidden]r- tx_q
+'        [BroadcastScheduler] -up- BS_q: put commands\n to plan schedule
+'        [BroadcastScheduler] -up- tx_q: put Tx\n before send
 
         ' BlockManager
-        frame {
-            [BlockManager] <<Controls Block>>
-            [ChannelService] -down- [BlockManager]
+        [BlockManager] <<Oversees Block Data>>
+        ChannelService -[bold]down- [BlockManager]
 
-            [Epoch] << Round-related >>
-            [BlockManager] .left. [Epoch]
-            [BlockManager] .right. [BlockGenerationScheduler]
+        [Epoch] << Round-related >>
+        [Epoch] -[hidden]r- [BlockGenerationScheduler]
+        [BlockManager] .down. [Epoch]
+        [BlockManager] .down. [BlockGenerationScheduler]
 
-            database txQueue as BM_q <<AgingCache:\n Block Timestamp>>
-            database "unconfirmedBlock\nQueue" as u_q
-            database "CandidateBlocks" as candidate
+        [BlockChain] <<Manipulate\n Confirmed Block>>
+        [BlockManager] -right- [BlockChain]
+        [BlockChain] -right- blockDB: store confirmed block
 
-            [BlockManager] -- BM_q
-            [BlockManager] -- u_q: Stored Undefined block
-            [BlockManager] -- candidate: Stored Next block
-
-            [BlockChain] <<Confirmed Block>>
-            [BlockManager] -- [BlockChain]
-            [BlockChain] -- blockDB: store confirmed block
-
-        }
-
-
+        ' BlockManager Queues
+'        database txQueue as BM_q <<AgingCache:\n Block Timestamp>>
+'        database "unconfirmedBlock\nQueue" as u_q
+'        database "CandidateBlocks" as candidate
+'
+'        [BlockManager] -- BM_q
+'        [BlockManager] -- u_q: Stored Undefined block
+'        [BlockManager] -- candidate: Stored Next block
 }
-
-'' connections
-'[PeerService] -right-( () ChannelInnerStub
-'() ChannelInnerStub -- [ChannelInnerService]
-'[PeerService] --( () ChannelTxRecieverStub
-'() ChannelTxRecieverStub -down- [ChannelTxReciever]
-
-
-
-'PeerService --( () IconScoreStub
-
-'() ChannelServiceStub
-'package {
-'    ChannelServiceStub -down- [ChannelService]
-'        frame {
-'            ChannelService - [BlockManager]
-''            [txQueue] #Yellow
-''            [unconfirmedBlockQueue] #Yellow
-''            [BlockChain]
-''            [BlockVersioner]
-''            [TransactionVersioner]
-''            [BlockGenerationScheduler]
-''            [BlockGenerationScheduler-Queue] #Yellow
-'        }
-'
-''        () ChannelTxCreatorStub - [ChannelTxCreator]
-''        () ChannelTxReceiverStub - [ChannelTxReceiver]
-''
-''        [ChannelStateMachine]
-''        [TimerService]
-'    }
-
-
-'        frame {
-'            control TransactionSerializer
-'            control TransactionVerifier
-'        }
-
-
-''
-'        frame "BroadcastScheduler" {
-'            [BroadcastScheduler_Queue] #Yellow
-'            [storedTx_Queue] #Yellow
-'
-'
-'        }
-
-
-'() IconScoreStub
-'package {
-'    frame {
-'        [IconServiceEngine]
-'}
 
 @enduml
 
