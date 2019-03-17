@@ -1,6 +1,8 @@
 @startuml
-autonumber 
+autonumber
+hide footbox
 
+' ===== DIAGRAM
 actor User
 
 User -> PeerService: $ loop peer ...
@@ -14,4 +16,14 @@ create IconScoreService
 ChannelService -> IconScoreService: execute New Process
 note over IconScoreService: MOVE TO ..
 
+== Process Summary ==
+note over User, IconScoreService #aaffaa
+    - launcher(peer)
+        -- launcher(rest)
+        -- launcher(channel)
+            --- launcher(score)
+            --- TxCreator
+            --- TxReciever
+            --- BroadcastScheduler
+end note
 @enduml
