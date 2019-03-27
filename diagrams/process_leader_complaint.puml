@@ -1,0 +1,38 @@
+@startuml
+start
+
+partition part1 {
+    :Receives Tx;
+
+    repeat
+    :Start Timer;
+
+    if (New Block\n from Leader) then (yes)
+        :End Timer;
+        #red:WHAT's NEXT?;
+        end
+    else (no)
+    endif
+    repeat while (Tx remains?) is (yes)
+}
+
+partition part2 {
+    -> No New Block && No Tx\n in given Time;
+    repeat
+    :Leader Complaint Message\n to others;
+    :Leader Complaint Message\n from others;
+    repeat while (me.height < you.height?) is (yes)
+}
+
+partition part3 {
+    if (New Leader Availble?) then (no)
+        end
+    else (yes)
+    endif
+
+    :New Leader eletected;
+    :make Complaint Block;
+    :Broadcast Block;
+}
+end
+@enduml

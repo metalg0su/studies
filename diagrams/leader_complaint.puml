@@ -1,0 +1,17 @@
+@startuml
+|Leader|
+:Await Tx;
+if (Tx in 2 sec?) then (yes)
+    :Make Block;
+else (no)
+    :Make Empty Block;
+endif
+
+split
+|Leader|
+:Become Voter;
+split again
+|Voter|
+:Change Network Leader;
+end split
+@enduml

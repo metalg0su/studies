@@ -1,0 +1,23 @@
+@startuml
+:rest_v3_req;
+:request;
+:pre_validate_check - req;
+:pre_validate_check response: 0x0;
+:process_block_data_start;
+:confirm empty block;
+:invoke block start;
+:invoke block req;
+:invoke block resp;
+:invoke block done;
+
+'------ same below
+
+:confirm block start;
+:save txresult;
+:save tx;
+:save block;
+:write precommit_state req;
+:write precommit_state resp;
+:confirm block done;
+:process_block_data done;
+@enduml
