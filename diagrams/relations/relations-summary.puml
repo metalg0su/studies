@@ -18,7 +18,7 @@ actor Iconist as user
 note top: Http Request!
 
 () gRPC
-() rabbitMQ << Singleton >>
+() rabbitMQ << Singleton Stub >>
 
 database blockDB <<levelDB\n key: value storage>>
 
@@ -34,27 +34,29 @@ package REST {
 
     user -right-> worker: Entry Point\n (api/v3/...)
     worker -right-> server : route
-    server -( gRPC: Dispatch
 }
 
 ' Peer
 package PEER {
     collections PeerService <<Defines Peer Type>> #aaffaa
-    rabbitMQ )-left- PeerService: Stub-Skel Connection
+    PeerService --( rabbitMQ
 
-    [PeerInnerService] << Provides Peer-related info? >>
-    PeerService -[dotted]down- [PeerInnerService]: get channel info?
+    () PeerInnerService << Provides Peer-related info? >>
+    () PeerOuterService <<gRPC>>
+    note right: Handling Requests\n from other peers
+    PeerOuterService -[hidden]r- PeerInnerService
 
-    [PeerOuterService] <<Handling Outside Requests>>
-    PeerService <-down- [PeerOuterService]
+    PeerOuterService -right-> PeerService
+    PeerInnerService -[dotted]u- PeerService: get channel info?
 
-    gRPC )- [PeerOuterService]
 }
+    [Other Peer] --( PeerOuterService
 
 ' Channel
 package CHANNEL {
         collections ChannelService << Channel Layer >> #aaaaff
-        rabbitMQ )-left- ChannelService: Stub-Skel Connection
+        rabbitMQ -- ChannelService
+        PeerInnerService )-left- ChannelService
         [TimerService] <<State-related>>
 
         ' ChannelInnerService
@@ -65,6 +67,7 @@ package CHANNEL {
         ' TxInnerServices
         () "Tx\nReciever" as txRec
         () "Tx\nCreater" as txCre
+        server -( txCre: Dispatch
         txCre --[hidden]left-- txRec
         [ChannelInnerService] -up- txCre: create_icx_tx
         [ChannelInnerService] -up- txRec
