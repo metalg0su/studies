@@ -1,0 +1,39 @@
+@startuml
+autonumber
+
+participant main_entry as main
+
+create mainEndpoint as ep_main
+main -> ep_main: declare main-endPoint
+
+create PluginManager as plugin
+main -> plugin: setup built-in plugins
+plugin -> plugin: register plugins
+note over plugin: MOVE TO...
+
+'main -> main: configure
+ep_main -> ep_main: listen to\n other plugins' connection
+main -> ep_main: call 'track_and_propagate\n available_endpoints'
+ep_main -> : broadcast updated Endpoint
+
+main -> ep_main: call 'start_serving_nowait'
+ep_main -> ep_main: listening events...
+main -> ep_main: call 'connect_to\n endpoints_blocking'
+ep_main -> ep_main: connect to all available Endpoints
+
+== trinity boot ==
+create trinity_boot as boot
+main -> boot: call
+
+create DB as db
+boot -> db: setting up a new proc
+note over db: run_database_process
+db -> db: start as new proc sett
+
+db <--> boot: conn through IPC
+create  Networking as network
+boot -> network: setting up a new proc
+note over network: launch_node
+network -> network: start as new proc
+
+@enduml
