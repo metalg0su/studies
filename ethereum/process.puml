@@ -3,37 +3,43 @@ autonumber
 
 participant main_entry as main
 
-create mainEndpoint as ep_main
+== pre-processing == 
+create entity mainEndpoint as ep_main
 main -> ep_main: declare main-endPoint
 
-create PluginManager as plugin
-main -> plugin: setup built-in plugins
-plugin -> plugin: register plugins
-note over plugin: MOVE TO...
+create PlugInManager as pg_man
+main -> pg_man: setup built-in plugins
+pg_man -> ep_main: attach?
+pg_man -> pg_man: register plugins and set ready
 
 'main -> main: configure
-ep_main -> ep_main: listen to\n other plugins' connection
-main -> ep_main: call 'track_and_propagate\n available_endpoints'
-ep_main -> : broadcast updated Endpoint
-
-main -> ep_main: call 'start_serving_nowait'
-ep_main -> ep_main: listening events...
-main -> ep_main: call 'connect_to\n endpoints_blocking'
-ep_main -> ep_main: connect to all available Endpoints
+ep_main -> ep_main: handles newly connected enpoints
+note over ep_main: start listening events...
+ep_main -> ep_main: self-connection\n (to activate shutdown event from User)
 
 == trinity boot ==
 create trinity_boot as boot
-main -> boot: call
+main -> boot: start
 
-create DB as db
-boot -> db: setting up a new proc
-note over db: run_database_process
-db -> db: start as new proc sett
+create DB_Manager as db_manager
+boot -> db_manager: new proc
+note over db_manager: run_database_process
+create database DB as db
+db_manager <-> db: Server-Client
 
-db <--> boot: conn through IPC
 create  Networking as network
-boot -> network: setting up a new proc
+boot -> network: new proc
 note over network: launch_node
-network -> network: start as new proc
+
+create entity EndPoint as ep
+network -> ep: declare
+ep -> ep: handles connected endpoints
+ep -> ep_main: conn
+ep -> ep_main:broadcast connected-endpoints
+
+create PlugInManager2 as pg_man2
+network -> pg_man2: setup plugins
+pg_man2 -> ep_main: conn?
+pg_man2 -> pg_man2: register plugins and set ready
 
 @enduml

@@ -1,0 +1,91 @@
+@startuml
+
+'----- Basic Processes Declaration
+() MainEventBus as main_bus <<IPC>>
+() EventBus as bus <<IPC>>
+
+' Main Boot: configure, trigger point
+'       block gen? set Node type?
+[Trinity_boot] as main #ffaaaa
+
+' Network: Node. p2p, sync,\n has plugIn Manager
+[Network] as network #aaffaa
+' 클라이언트 느낌. p2p의 ㅁ관문
+[Node]
+
+' EventBus By lahja lib: inter-process communication, based on non-blocking asyncio.
+
+' PlugIns
+[PlugIn Manager] as pg_manager #ddffdd
+collections Plugins as pg
+
+
+' DB
+[DB Manager] as db_manager <<DB server>> #aaaaff
+database DB <<levelDB>>
+
+'----- Relations
+' main
+main -left- main_bus
+main -- network: new proc
+main -- db_manager: new proc
+network .right.> db_manager: manipulate (Not Direct)
+
+' db
+db_manager .. DB: Server-Client.\n pluggable by mp.manager
+
+' network
+network -left- bus
+network -- pg_manager
+pg_manager -left- pg
+
+
+
+pg .left. main_bus: not used?
+pg .right. bus
+
+'package PlugIns {
+''    event-driven. defined by Scope of Mnger
+'
+'    frame MainProcessPlugIn as pg_main {
+''    reconfig main proc and highkack it
+'        [Attach] <<REPL>>
+'        [FixUncleanShutdown]
+'        [DbShell]
+'    }
+'
+'    frame IsolatedPlugIn as pg_iso {
+''        Independent procs
+'        [Ethstats]
+'        [JsonRpcServer]
+'        [PeerCountReporter]
+'        [BeaconNode]
+'        [Peer_Discovery]
+'    }
+'
+'    frame AsyncStopPlugIn as pg_async {
+''        cut the async-flow. like interrupt.
+''        will be refactored as isolatedPlugIn
+'        [Debug]
+'        [LightPeerChainBridge] <<??>>
+'        [Syncer]
+'        [TxPool]
+'    }
+'}
+'
+'' PlugIn Relations
+'bus )-- Attach
+'bus )-- FixUncleanShutdown
+'bus )-- DbShell
+'bus )-- Ethstats
+'bus )-- JsonRpcServer
+'bus )-- PeerCountReporter
+'bus )-- BeaconNode
+'bus )-- Peer_Discovery
+'bus )-- Debug
+'bus )-- LightPeerChainBridge
+'bus )-- Syncer
+'bus )-- TxPool
+
+
+@enduml
