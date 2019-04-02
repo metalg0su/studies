@@ -3,10 +3,12 @@
 NOT_READY: initial state
 
 NOT_READY --> READY
-READY: connect to BUS, configure
+READY: connect to BUS
+READY: configure
 
-READY --> STARTED: can be called wherever. (even by others through BUS)
+READY --> STARTED
 STARTED: active
+note right: can be called wherever\neven by others through BUS
 
 STARTED --> STOPPED
 STOPPED: terminated
