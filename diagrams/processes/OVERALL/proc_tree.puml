@@ -1,0 +1,16 @@
+@startuml
+salt
+{
+  {T
+     + launcher | <color:red> Base Launcher. PeerService
+     ++ rest | <color:blue> REST Service
+     +++ gunicorn | <color:green> REST Worker(s)
+     ++ channel | <color:blue> ChannelService
+     +++ score | <color:green> ScoreService
+     +++ unknown_proc1 | <color:green> TxCreator?
+     +++ unknown_proc2 | <color:green> Broadcast_scheduler?
+     +++ semaphore tracker
+  }
+}
+@enduml
+
