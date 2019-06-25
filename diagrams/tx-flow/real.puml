@@ -1,0 +1,45 @@
+@startuml
+
+participant client
+
+box "icon-rpc-server" #LightBlue
+	participant "REST Server" as rest
+	participant
+end box
+
+box "loopchain engine"
+    participant "Channel Tx Creator" as tx_creator
+    participant "TransactionVerifier" as verifier
+    participant "BroadcastScheduler" as broadcaster
+    participant "TimerService" as timer
+end box
+
+
+participant "icon-service engine" as icon-service
+
+
+
+' ===== Relations
+client -> rest: icx_sendTransaction
+
+' rest -> tx_creator: is_limit
+' tx_creator --> rest: result is_limit
+'
+rest -> icon-service: validate_transaction
+icon-service --> rest: result validate_transaction
+
+rest -> tx_creator: create_icx_tx
+tx_creator -> tx_creator: Make Tx by TransactionSerializer
+tx_creator -> verifier: Verify Tx
+tx_creator -> broadcaster: push cmd 'CREATE_TX'
+tx_creator --> rest: tx_hash
+
+rest --> client: response_code (with tx_hash)
+
+'=== icon-rpc-server END ===
+
+broadcaster -> broadcaster: Make 'TxItem' and store it to 'stored_tx' queue
+broadcaster -> timer: add timer object with 'TIMER_KEY_ADD_TX' key
+
+
+@enduml
