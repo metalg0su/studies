@@ -1,0 +1,64 @@
+@startuml
+title Start icon-rpc-server in Launcher
+box PeerProcess #fcd3a9
+    participant peer_launcher
+    participant RestService
+end box
+
+box RestService Process (CommonProcess) #cdfcb3
+    participant RestService_MulProc
+end box
+
+box CommonSubProcess #b3e1fc
+    participant CommonSubProcess as subproc
+    participant rpc_cli
+end box
+
+box Gunicorn #e6b1df
+    participant "master(rpc_app)" as rpc_app
+    participant workers
+end box
+
+activate peer_launcher
+peer_launcher -> RestService: init
+activate RestService
+
+RestService -> RestService_MulProc: Container.run() in Multiproc
+activate RestService_MulProc
+
+RestService -> RestService: wait until \nMulProcEvent is set
+
+RestService_MulProc -> subproc: pass rest launcher cmd
+activate subproc
+
+subproc -> rpc_cli: run through cmd args
+destroy subproc
+activate rpc_cli
+
+RestService_MulProc -> RestService: event - set
+RestService -> peer_launcher: proceed to peer launcher
+destroy RestService
+
+rpc_cli -> rpc_app: run
+destroy rpc_cli
+activate rpc_app
+
+RestService_MulProc -> RestService_MulProc: listening 'quit' cmd by \nmultiprocessing.Pipe
+
+rpc_app -> workers
+activate workers
+...
+== Keyboard Interrupt ==
+
+peer_launcher -> RestService_MulProc: RestService.stop \nby multiprocessing.Pipe
+RestService_MulProc --> subproc: server.stop()
+note right subproc
+    The proc has been
+    already terminated
+end note
+destroy RestService_MulProc
+
+note over rpc_app, workers
+    who kill those things?
+end note
+@enduml
