@@ -1,0 +1,20 @@
+@startuml
+title A
+
+@startsalt
+{
+    {T
+    + Main launcher (PeerService)
+    ++ ChannelService
+    +++ ChannelTxCreator
+    +++ ChannelTxReceiver
+    +++ IconScore
+    ++ RestService
+    +++ IconRPC cli
+    ++++ gunicorn Master worker (IconRPC app)
+    +++++ gunicorn workers
+    }
+}
+@endsalt
+
+@enduml
