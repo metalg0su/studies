@@ -1,77 +1,76 @@
-
-     ┌───────┐                ┌────────┐          ┌──────────┐           ┌─────────────┐          ┌─────────────────┐          ┌────────────────────┐          ┌────────────────┐          ┌─────────────────────┐          ┌───────────────────┐          ┌──────────────────┐          ┌────────────────────────┐          ┌──────────────┐          ┌────┐          ┌────────┐
-     │Iconist│                │Gunicorn│          │Dispatcher│           │IconScoreStub│          │IconServiceEngine│          │ChannelTxCreatorStub│          │ChannelTxCreator│          │TransactionSerializer│          │TransactionVerifier│          │BroadcastScheduler│          │BroadcastScheduler_Queue│          │storedTx_Queue│          │gRPC│          │PeerStub│
-     └───┬───┘                └───┬────┘          └────┬─────┘           └──────┬──────┘          └────────┬────────┘          └─────────┬──────────┘          └───────┬────────┘          └──────────┬──────────┘          └─────────┬─────────┘          └────────┬─────────┘          └───────────┬────────────┘          └──────┬───────┘          └─┬──┘          └───┬────┘
-         │Entry point (../api/v3/)│                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─>                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │ validation_transaction │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─>│                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │       some links         │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ >│                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │ response_to_json_query │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │ <─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │         create_icx_tx    │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ >│                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │  serialize with tx_version   │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─>│                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │  return Transaction Object   │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │ <─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                 give Tx Object and verify it                 │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─>│                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │        comm: CREATE_TX        │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ >                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                       response tx_hash with status code.                        │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │ <─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │ response json result.. │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │<─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─                     │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │    schedule Broadcast order    │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ >                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                          put tx_item                          │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─>                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                             send Tx to Peer subscribed?       │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ >                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │                 │
-         │                        │                    │                        │                          │                             │                             │                              │                               │                             │                                │                              │                    │  ─ ─ ─ ─ ─ ─ ─ ─>
-     ┌───┴───┐                ┌───┴────┐          ┌────┴─────┐           ┌──────┴──────┐          ┌────────┴────────┐          ┌─────────┴──────────┐          ┌───────┴────────┐          ┌──────────┴──────────┐          ┌─────────┴─────────┐          ┌────────┴─────────┐          ┌───────────┴────────────┐          ┌──────┴───────┐          ┌─┴──┐          ┌───┴────┐
-     │Iconist│                │Gunicorn│          │Dispatcher│           │IconScoreStub│          │IconServiceEngine│          │ChannelTxCreatorStub│          │ChannelTxCreator│          │TransactionSerializer│          │TransactionVerifier│          │BroadcastScheduler│          │BroadcastScheduler_Queue│          │storedTx_Queue│          │gRPC│          │PeerStub│
-     └───────┘                └────────┘          └──────────┘           └─────────────┘          └─────────────────┘          └────────────────────┘          └────────────────┘          └─────────────────────┘          └───────────────────┘          └──────────────────┘          └────────────────────────┘          └──────────────┘          └────┘          └────────┘
-
 @startuml
 
-Iconist --> Gunicorn: Entry point (../api/v3/)
-Dispatcher --> IconScoreStub: validation_transaction
-IconScoreStub --> IconServiceEngine: some links
-Dispatcher <-- IconScoreStub: response_to_json_query
+title Ultimate Tx-Flow (create_icx_tx)
 
-Dispatcher --> ChannelTxCreatorStub: create_icx_tx
-ChannelTxCreator --> TransactionSerializer: serialize with tx_version
-ChannelTxCreator <-- TransactionSerializer: return Transaction Object
-ChannelTxCreator --> TransactionVerifier: give Tx Object and verify it
-' + pre_validate Tx...
-ChannelTxCreator --> BroadcastScheduler: comm: CREATE_TX
-Dispatcher <-- ChannelTxCreatorStub: response tx_hash with status code.
+' === Define participants
+participant Iconist as user
+participant IconScore as score
 
-Iconist <-- Gunicorn: response json result..
+box icon-rpc-server
+    participant RESTServer as rest
+    participant IcxDispatcher as dispatcher
+end box
 
-'------------------------------------------
+box Loopchain
+    participant ChannelTxCreator as tx_creator
+    participant BroadcastScheduler as broadcaster
+    participant TimerService as timer
+end box
 
-BroadcastScheduler --> BroadcastScheduler_Queue: schedule Broadcast order 'CREATE_TX'
-BroadcastScheduler --> storedTx_Queue: put tx_item
-BroadcastScheduler --> gRPC: send Tx to Peer subscribed?
-gRPC --> PeerStub
+box tmp
+    participant PeerOuterService as peer_outer
+    participant ChannelTxReciever as tx_receiver
+end box
+' === Relations
 
+' --- Request to icon-rpc-server
+user -> rest: request (../api/v3/..)
+
+rest -> dispatcher: method matched to \nicx_sendTransaction()
+dispatcher -> score: validation_transaction()
+score --> dispatcher: response_to_json_query
+
+dispatcher -> tx_creator: create_icx_tx() (rabbitMQ)
+tx_creator --> dispatcher: status_code, tx_hash
+dispatcher -> rest: result
+
+user <-- rest: response (json)
+
+' --- loopchain
+' Verify Tx
+tx_creator -> tx_creator: serialize request to make tx
+tx_creator -> tx_creator: verify tx
+note over tx_creator
+verify below
+ - pre_verify: invalid nid
+ - verify: verify_loosely
+ - verify_loosely: hash, signature, is_unique_hash
+end note
+tx_creator -> tx_creator: pre_validate tx \n(time bound check)
+
+' BroadcastScheduler
+tx_creator -> broadcaster: schedules CREATE_TX job \n(tx, tx_versioner)
+broadcaster -> broadcaster: store Tx in stored_tx
+broadcaster -> timer: add timer to TimerService
+
+broadcaster -> broadcaster: wait for more tx until duration is gone
+...
+timer --> broadcaster: end duration!
+broadcaster -> peer_outer: AddTxList (gRPC call)
+
+' --- Another Peer
+peer_outer -> tx_receiver: pass request through add_tx_list()
+tx_receiver -> tx_receiver: verify received Tx
+note over tx_receiver
+same steps to ChannelTxCreator:
+ - pre_verify: invalid nid
+ - verify: verify_loosely
+ - verify_loosely: hash, signature, is_unique_hash
+end note
+tx_receiver -> tx_receiver: tx.size()
+note right #red: ???
+
+tx_receiver -> tx_receiver: push tx_list to queue
+tx_receiver --> peer_outer: response code with message
+peer_outer --> broadcaster: response code with message (rabbitMQ)
 @enduml
