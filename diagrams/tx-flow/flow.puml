@@ -1,0 +1,17 @@
+@startuml
+note right:
+    Triggers when the ChannelStateMachine enters the state 'BlockGenerate'.
+    For more detail, see State diagram.
+end note
+:ChannelStateMachine._blockgenerate_on_enter();
+:BlockManager.start_block_generate_timer();
+:ConsensusSiever.start_timer();
+:ConsensusSiever.consensus();
+:Epoch.makeup_block();
+:Epoch.__add_tx_to_block();
+note right
+    Tx Verify here!
+end note
+@enduml
+
+' 누가 TIMER_KEY_BLOCK_GENERATE를 등록하지?

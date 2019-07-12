@@ -6,23 +6,25 @@ title Ultimate Tx-Flow (create_icx_tx)
 participant Iconist as user
 participant IconScore as score
 
-box icon-rpc-server
+box icon-rpc-server #AAAAFF
     participant RESTServer as rest
     participant IcxDispatcher as dispatcher
 end box
 
-box Loopchain
+box Loopchain #FFAAAA
     participant ChannelTxCreator as tx_creator
     participant BroadcastScheduler as broadcaster
     participant TimerService as timer
 end box
 
-box tmp
+box Other Peer #AAFFAA
     participant PeerOuterService as peer_outer
     participant ChannelTxReciever as tx_receiver
+    participant BlockManager as block_manager
 end box
-' === Relations
 
+
+' === Relations
 ' --- Request to icon-rpc-server
 user -> rest: request (../api/v3/..)
 
@@ -40,37 +42,41 @@ user <-- rest: response (json)
 ' Verify Tx
 tx_creator -> tx_creator: serialize request to make tx
 tx_creator -> tx_creator: verify tx
-note over tx_creator
-verify below
- - pre_verify: invalid nid
- - verify: verify_loosely
- - verify_loosely: hash, signature, is_unique_hash
-end note
 tx_creator -> tx_creator: pre_validate tx \n(time bound check)
 
 ' BroadcastScheduler
 tx_creator -> broadcaster: schedules CREATE_TX job \n(tx, tx_versioner)
 broadcaster -> broadcaster: store Tx in stored_tx
-broadcaster -> timer: add timer to TimerService
-
-broadcaster -> broadcaster: wait for more tx until duration is gone
-...
-timer --> broadcaster: end duration!
-broadcaster -> peer_outer: AddTxList (gRPC call)
+' Add timer to timer service and wait...
+note over broadcaster: wait for more tx...
+broadcaster ->o peer_outer: AddTxList (gRPC call)
 
 ' --- Another Peer
-peer_outer -> tx_receiver: pass request through add_tx_list()
+peer_outer -> tx_receiver: add_tx_list() - tx_list
 tx_receiver -> tx_receiver: verify received Tx
-note over tx_receiver
-same steps to ChannelTxCreator:
- - pre_verify: invalid nid
- - verify: verify_loosely
- - verify_loosely: hash, signature, is_unique_hash
-end note
 tx_receiver -> tx_receiver: tx.size()
-note right #red: ???
+note right #red: size 무엇???
 
 tx_receiver -> tx_receiver: push tx_list to queue
 tx_receiver --> peer_outer: response code with message
-peer_outer --> broadcaster: response code with message (rabbitMQ)
+peer_outer -->o broadcaster: response code with message (rabbitMQ)
+note over tx_receiver: consume tx_list \nat ChannelTxReciever process..
+note over tx_receiver #red: ???? 이거 왜 message_queue_task?
+activate tx_receiver
+
+loop each tx in tx_list
+    note over tx_receiver: check tx hash already exists in \n-block_manager.tx_queue \n-blockchain
+    note over tx_receiver #red: why do check those things?
+    tx_receiver -> block_manager: add tx to tx_queue (AgingCache)
+end
+
+==Some missing link!==
+
+
+
+' ============= Comments =============
+'verify below
+' - pre_verify: invalid nid
+' - verify: verify_loosely
+' - verify_loosely: hash, signature, is_unique_hash
 @enduml
