@@ -1,0 +1,81 @@
+@startuml
+' === Declaration
+box Child #AAAAFF
+    participant StateMachine as fsm
+    participant ChannelService as chan
+    participant NodeSubscriber as subscriber
+'    participant RPC_server as rpc_serv
+end box
+
+box Parent #FFFAAA
+    participant receiption as receipt
+end box
+
+' === Relations
+-> fsm: transition
+note over fsm #AAFFAA: State 'SubscribeNetwork'
+
+==connecting==
+fsm -> chan: subscribe_to_parent()
+activate chan
+note over chan: wait until event set
+chan -> subscriber: subscribe()
+
+' Connection
+subscriber o<-->o receipt: conn
+activate subscriber #AAFFAA
+activate receipt #AAFFAA
+subscriber -> receipt: node_ws_Subscribe(curr_height, peer_id)
+receipt -> receipt: register_citizen
+
+alt Failure reponse
+    note over receipt #FFAAAA
+        if:
+        - Parent reached to subscribe limit
+        - Child has been already registered
+    end note
+    receipt --> subscriber: node_ws_PublishHeartbeat(ERROR)
+    note over subscriber #FFAAAA: `ConnectionError` \nGoto `closing`
+
+else Success reponse
+    receipt --> subscriber: node_ws_PublishHeartbeat(SUCCESS)
+    subscriber --> chan: set event
+    chan --> fsm: transition
+    deactivate chan
+    note over fsm #AAFFAA: State 'Watch'
+end
+
+
+'note over subscriber, receipt: start subscribe_loop
+'activate subscriber #blue
+'activate receipt #blue
+
+
+==subscribe_loop==
+group [async loop] async publish_heartbeat
+    receipt --> subscriber: node_ws_PublishHeartbeat()
+    note over subscriber #FFAAAA: `ConnectionError` if error contains
+    receipt -> receipt : Timer Reset (rpc_server)
+end
+
+group [async loop] async publish_new_block
+    receipt --> subscriber: node_ws_PublishNewBlock(new_block)
+    note over subscriber #FFAAAA: `ConnectionError` if error contains
+    subscriber -> subscriber: verify
+    subscriber -> subscriber: add_confirmed_block (block_manager)
+    note over subscriber #FFAAAA: `AnnounceNewBlockError` if verify fails
+end
+
+==closing==
+note over subscriber, receipt #FFAAAA: If Exception raised!
+subscriber <--> receipt: close()
+
+deactivate subscriber
+deactivate receipt
+destroy subscriber
+destroy receipt
+
+subscriber -> chan: propagate Exception
+chan -> fsm: handle and transition state
+note over fsm #AAFFAA: State 'SubscribeNetwork'
+@enduml
