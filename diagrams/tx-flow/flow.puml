@@ -1,9 +1,9 @@
 @startuml
-note right:
-    Triggers when the ChannelStateMachine enters the state 'BlockGenerate'.
+:ChannelStateMachine._blockgenerate_on_enter();
+note right
+    Triggers when the ChannelStateMachine enters the state 'BlockGenerate'
     For more detail, see State diagram.
 end note
-:ChannelStateMachine._blockgenerate_on_enter();
 :BlockManager.start_block_generate_timer();
 :ConsensusSiever.start_timer();
 :ConsensusSiever.consensus();

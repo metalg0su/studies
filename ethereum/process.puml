@@ -1,0 +1,45 @@
+@startuml
+autonumber
+
+participant main_entry as main
+
+== pre-processing == 
+create entity mainEndpoint as ep_main
+main -> ep_main: declare main-endPoint
+
+create PlugInManager as pg_man
+main -> pg_man: setup built-in plugins
+pg_man -> ep_main: attach?
+pg_man -> pg_man: register plugins and set ready
+
+'main -> main: configure
+ep_main -> ep_main: handles newly connected enpoints
+note over ep_main: start listening events...
+ep_main -> ep_main: self-connection\n (to activate shutdown event from User)
+
+== trinity boot ==
+create trinity_boot as boot
+main -> boot: start
+
+create DB_Manager as db_manager
+boot -> db_manager: new proc
+note over db_manager: run_database_process
+create database DB as db
+db_manager <-> db: Server-Client
+
+create  Networking as network
+boot -> network: new proc
+note over network: launch_node
+
+create entity EndPoint as ep
+network -> ep: declare
+ep -> ep: handles connected endpoints
+ep -> ep_main: conn
+ep -> ep_main:broadcast connected-endpoints
+
+create PlugInManager2 as pg_man2
+network -> pg_man2: setup plugins
+pg_man2 -> ep_main: conn?
+pg_man2 -> pg_man2: register plugins and set ready
+
+@enduml

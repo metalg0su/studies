@@ -15,63 +15,73 @@ box Loopchain #FFAAAA
     participant ChannelTxCreator as tx_creator
     participant BroadcastScheduler as broadcaster
     participant TimerService as timer
-end box
-
-box Other Peer #AAFFAA
-    participant PeerOuterService as peer_outer
-    participant ChannelTxReciever as tx_receiver
+    participant ChannelTxReceiver as tx_receiver
     participant BlockManager as block_manager
 end box
 
+box ConsensusStage #AAFFAA
+    participant ChannelStateMachine as fsm
+    participant ConsensusSiever as siever
+    participant ChannelService as channel_service
+end box
+
+participant PeerOuterService as peer_outer
 
 ' === Relations
 ' --- Request to icon-rpc-server
-user -> rest: request (../api/v3/..)
+'user -> rest: request (../api/v3/..)
+'
+'rest -> dispatcher: method matched to \nicx_sendTransaction()
+'dispatcher -> score: validation_transaction()
+'score --> dispatcher: response_to_json_query
+'
+'dispatcher -> tx_creator: create_icx_tx() (rabbitMQ)
+'' --- loopchain
+'' Verify Tx
+'tx_creator -> tx_creator: serialize request to make tx
+'tx_creator -> tx_creator: **verify tx (1)**
+'tx_creator -> tx_creator: pre_validate tx \n(time bound check)
+'
+'' BroadcastScheduler
+'tx_creator -> broadcaster: schedules CREATE_TX job \n(tx, tx_versioner)
+'' --- loopchain end
+'tx_creator --> dispatcher: status_code, tx_hash
+'dispatcher -> rest: result
+'user <-- rest: response (json)
+'
+'' --- loopchain
+'' BroadcastScheduler
+'broadcaster -> broadcaster: store Tx in stored_tx
+'' Add timer to timer service and wait...
+'note over broadcaster: wait for more tx...
+'broadcaster ->o peer_outer: AddTxList (gRPC call)
+'note right: Broadcast to Other Peers (include self)
+'activate peer_outer
+'
+'' --- Another Peer
+'peer_outer -> tx_receiver: add_tx_list() - tx_list
+'activate tx_receiver
+'tx_receiver -> tx_receiver: **verify received Tx(2)**
+'tx_receiver -> tx_receiver: tx.size()
+'note right #red: size 무엇???
+'
+'tx_receiver -> tx_receiver: push tx_list to tx_queue
+'tx_receiver --> peer_outer: response code with message
+'deactivate tx_receiver
+'note right: Response to Original Broadcaster
+'peer_outer -->o broadcaster: response code with message (rabbitMQ)
+'deactivate peer_outer
 
-rest -> dispatcher: method matched to \nicx_sendTransaction()
-dispatcher -> score: validation_transaction()
-score --> dispatcher: response_to_json_query
+==Block==
+tx_receiver -> block_manager: push tx to AgingCache
+'tx_receiver -> timer: start_leader_complain_timer_if_tx_exists
+'siever -> channel_service : turn_on_leader_complain_timer
+'note right: [useless] State of Leader: BlockGenerate
+channel_service -> channel_service : check AgingCache and \nstart__leader_complain_timer_if_tx_exists
 
-dispatcher -> tx_creator: create_icx_tx() (rabbitMQ)
-tx_creator --> dispatcher: status_code, tx_hash
-dispatcher -> rest: result
-
-user <-- rest: response (json)
-
-' --- loopchain
-' Verify Tx
-tx_creator -> tx_creator: serialize request to make tx
-tx_creator -> tx_creator: verify tx
-tx_creator -> tx_creator: pre_validate tx \n(time bound check)
-
-' BroadcastScheduler
-tx_creator -> broadcaster: schedules CREATE_TX job \n(tx, tx_versioner)
-broadcaster -> broadcaster: store Tx in stored_tx
-' Add timer to timer service and wait...
-note over broadcaster: wait for more tx...
-broadcaster ->o peer_outer: AddTxList (gRPC call)
-
-' --- Another Peer
-peer_outer -> tx_receiver: add_tx_list() - tx_list
-tx_receiver -> tx_receiver: verify received Tx
-tx_receiver -> tx_receiver: tx.size()
-note right #red: size 무엇???
-
-tx_receiver -> tx_receiver: push tx_list to queue
-tx_receiver --> peer_outer: response code with message
-peer_outer -->o broadcaster: response code with message (rabbitMQ)
-note over tx_receiver: consume tx_list \nat ChannelTxReciever process..
-note over tx_receiver #red: ???? 이거 왜 message_queue_task?
-activate tx_receiver
-
-loop each tx in tx_list
-    note over tx_receiver: check tx hash already exists in \n-block_manager.tx_queue \n-blockchain
-    note over tx_receiver #red: why do check those things?
-    tx_receiver -> block_manager: add tx to tx_queue (AgingCache)
-end
-
-==Some missing link!==
-
+' ============= Comments =============
+'verify below
+' - pre_verify: invalid nid
 
 
 ' ============= Comments =============

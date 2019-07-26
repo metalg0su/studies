@@ -1,0 +1,56 @@
+@startuml
+
+package PlugIns {
+'    event-driven. defined by Scope of Mnger
+
+    frame MainProcessPlugIn as pg_main {
+        note as note_main #ffcccc
+            Reconfig main proc.
+        end note
+
+        [Attach] <<REPL>> as a1
+        [FixUncleanShutdown] as a2
+        [DbShell] as a3
+    }
+
+    frame IsolatedPlugIn as pg_iso {
+        note as note_iso #ffcccc
+            Independent proc.
+            Possible relations to P2P
+        end note
+
+        [Ethstats] <<Monitoring>> as b1
+        [JsonRpcServer] as b2
+        [PeerCountReporter] as b3
+        [BeaconNode] <<!>> as b4
+        [Peer_Discovery] <<Node Discovery>> as b5
+    }
+
+    frame AsyncStopPlugIn as pg_async {
+        note as note_async #ffcccc
+            Cut the async-flow.
+            May be changed to IsolatedPlugIn
+        end note
+
+        [Debug] as c1
+        [LightPeerChainBridge] as c2
+        [Syncer] as c3
+        [TxPool] as c4
+    }
+}
+
+' PlugIn Relations
+'bus )-- Attach
+'bus )-- FixUncleanShutdown
+'bus )-- DbShell
+'bus )-- Ethstats
+'bus )-- JsonRpcServer
+'bus )-- PeerCountReporter
+'bus )-- BeaconNode
+'bus )-- Peer_Discovery
+'bus )-- Debug
+'bus )-- LightPeerChainBridge
+'bus )-- Syncer
+'bus )-- TxPool
+@enduml
+

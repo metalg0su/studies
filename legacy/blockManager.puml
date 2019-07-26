@@ -1,0 +1,33 @@
+@startuml
+
+' Outside BlockManager
+() ChannelService as cs
+
+package BlockManager {
+    frame TMP {
+        [BlockChain]
+        cs -left-> [BlockChain]
+'        note left of BlockChain: Manipulate Blocks
+        [BlockGenerationScheduler]
+        [Epoch]
+    }
+
+    frame tmp {
+        database txQueue
+        database u_BlockQueue
+        [CandidateBlocks]
+'        note left of txQueue: AgingCache?
+    }
+}
+
+' Relations
+ChannelService -- BlockManager
+levelDB -- BlockChain
+'BlockManager <-> BlockChain: Most Important
+'BlockManager -left- txQueue
+'BlockManager -left- u_BlockQueue
+'BlockManager - BlockGenerationScheduler
+'BlockManager - CandidateBlocks
+'BlockManager -- Epoch: timer related
+
+@enduml

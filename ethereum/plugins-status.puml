@@ -1,0 +1,18 @@
+@startuml
+[*] --> NOT_READY
+NOT_READY: initial state
+
+NOT_READY --> READY
+READY: connect to BUS
+READY: configure
+
+READY --> STARTED
+STARTED: active
+note right: can be called wherever\neven by others through BUS
+
+STARTED --> STOPPED
+STOPPED: terminated
+
+STOPPED --> [*]
+@enduml
+

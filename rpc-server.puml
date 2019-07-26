@@ -1,0 +1,9 @@
+@startuml
+' entry point.
+' set configure and ready
+[cli]
+
+' actual service
+[app]
+@enduml
+

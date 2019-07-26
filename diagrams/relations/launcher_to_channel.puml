@@ -1,0 +1,100 @@
+@startuml
+title "launcher to channel"
+
+participant launcher
+
+box Peer #AADDAA
+    participant PeerInnerStub as peer
+end box
+
+participant IconScore as score
+
+'box Others
+    ' Singletons
+'    participant ChannelProperty as channel_property
+'    participant StubCollection as stub_collection
+'    participant ObjectManager as object_manager
+'
+    ' Non-Singletons
+'    participant PeerManager as peer_manager
+'
+    ' Others
+'end box
+
+
+box ChannelServices #DDAADD
+    participant ChannelService as channel_service
+    participant ChannelInnerService as channel_inner
+
+    participant ChannelTxCreator as tx_creator
+    participant ChannelTxReceiver as tx_receiver
+end box
+
+box ChannelComponents #White
+    participant ChannelStateMachine as channel_fsm
+    participant BroadcastScheduler as broadcaster
+    participant BlockManager as block_manager
+end box
+
+
+' === Relations
+activate launcher
+activate peer
+==Channel Init==
+create channel_service
+launcher -> channel_service: init
+activate channel_service
+create channel_inner
+channel_service -> channel_inner: init
+activate channel_inner
+'channel_service -> channel_property: store channel information
+'channel_service -> stub_collection: store channel information
+'channel_service -> object_manager: store channel object
+create channel_fsm
+channel_service -> channel_fsm: init
+note over channel_fsm: state: InitComponents
+activate channel_fsm
+
+==Channel serve==
+launcher -> channel_service: serve()
+channel_service -> peer: request get_channel_infos() (rabbitMQ)
+peer --> channel_service: response (rabbitMQ)
+channel_service -> peer: request get_node_info_detail() (rabbitMQ)
+peer --> channel_service: response (rabbitMQ)
+
+==Channel init==
+' Those below needs channel property to initialize.
+'channel_service -> peer_manager: init
+create broadcaster
+channel_service -> broadcaster: init
+activate broadcaster
+note over broadcaster: schedule cmd SUBSCRIBE \nto peer target
+create block_manager
+channel_service -> block_manager: init
+create score
+channel_service -> score: init
+activate score
+
+==Channel init subservices==
+'channel_service -> channel_inner: connect
+create tx_creator
+channel_service -> tx_creator: start as multi proc
+activate tx_creator
+
+tx_creator -> broadcaster: start as thread
+note right #red: ??
+loop
+    broadcaster -> broadcaster: check broadcast command \nand its data
+end
+
+create tx_receiver
+channel_service -> tx_receiver: start as multi proc
+activate tx_receiver
+loop
+tx_receiver -> tx_receiver: check tx_list from tx_queue \nand add it
+end
+
+channel_service -> channel_fsm: triggers complete_init_components
+note over channel_fsm: state: Consensus
+
+@enduml

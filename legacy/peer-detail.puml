@@ -1,0 +1,106 @@
+@startuml
+hide footbox
+autonumber 
+
+actor User
+
+box "PeerService" #e2ac93
+    participant PeerService
+    participant PeerOuterService
+    participant PeerInnerService
+    participant CommonService
+end box
+
+box "RestService" #d0e293
+    participant RestService 
+end box
+
+box "ChannelService" #93e2be
+    participant ChannelService 
+end box
+
+box "IconScore" #a593e2
+    participant IconScoreService
+end box
+
+create PeerService
+User -> PeerService: $ loop peer ...
+
+' PeerOuterService: connection with other peers.. by gRPC.
+create PeerOuterService
+PeerService -> PeerOuterService: init
+' PeerInnerService: connection with whom?.. by rabbitMQ 
+create PeerInnerService
+PeerService -> PeerInnerService: init
+' Rest. Listens to world requests.
+create RestService 
+PeerService -> RestService: execute New Process.
+note over RestService: MOVE TO .. 
+' CommonService: relayer between Peer and RS?..
+create CommonService
+PeerService -> CommonService: run. dunno
+' 
+' some bindings here by making stubs:
+'   - PeerInnerStub: 
+'   - ChannelInnerStub
+'   - ChannelTxReceiverInnerStub
+'   - IconScoreInnerStub
+' then, Connect itself to rabbitMQ, waiting to actions of others..?
+'
+' ----------------------------------------------------------------
+
+
+"launcher(peer)" -> PeerService: init and serve
+create StubCollection
+PeerService -> StubCollection: call. giv amqp_target and its key
+
+create PeerOuterService
+PeerService -> PeerOuterService: init
+note right
+    PeerOuterService secure gRPC service for outer Client or other Peer??...
+    demotool에서 peer에게 요청할 수 있는 balance, supply 등을 직접 받을 수 있는 곳인가봄
+    peer_list도 받아올 수 있는듯?
+end note
+create PeerInnerService
+PeerService -> PeerInnerService: init
+note right PeerInnerService: 내부 통신에서 들을 준비(listen쪽)를 하는 것 같음. skel같은건가. 실제 커넥트는 추후에 하는 것 같음.
+-> PeerService: get_channel_info
+note left
+    channel_manage_data.json을 이 시점에서 읽는 듯 하다.
+end note
+
+' Rest 실행
+create RestService
+PeerService -> RestService: init
+note over RestService #red: 프로세스 분기... Rest로
+destroy RestService
+
+note over PeerService #red: CommonService쪽 모르겠음
+group "Peer의 Inner와 Outer와 관련된 건가?? - 모르겠음 "
+    create CommonService1
+    PeerService -> CommonService1: start?
+    CommonService1 -> PeerOuterService: bind?
+    PeerOuterService -[#blue]> rabbitMQd: connect?
+    CommonService1 -> PeerInnerService: bind?
+    PeerInnerService -[#blue]> rabbitMQd: connect?
+    note over CommonService1: "이건 grpc를 통해 바깥 세상과 연결해 주기 위한 용도로 정의하는 건가 \n  잘 모르겠음. 이게 PeerOuterService.connect에 해당하는 걸 수도"
+end
+
+== async PeerService.serve()._serve() ==
+group PeerService.ready_tasks
+    PeerService -> StubCollection: call to serve. ready for tasks!
+    create PeerInnerStub
+    StubCollection -> PeerInnerStub : create by given data above
+    note over PeerInnerStub: Channel-readyTask로...
+
+' --------------------
+
+create ChannelService
+PeerService -> ChannelService: execute New Process
+note over ChannelService: MOVE TO ..
+create IconScoreService 
+ChannelService -> IconScoreService: execute New Process
+note over IconScoreService: MOVE TO ..
+
+
+@enduml

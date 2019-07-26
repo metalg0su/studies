@@ -1,0 +1,54 @@
+@startuml
+
+'----- Basic Processes Declaration
+() MainEventBus as main_bus <<IPC>>
+() EventBus as bus <<IPC>>
+
+' Main Boot: configure, trigger point
+'       block gen? set Node type?
+[Trinity_boot] as main #ffaaaa
+
+' Network: Node. p2p, sync,\n has plugIn Manager
+[Network] as network #aaffaa
+' 클라이언트 느낌. p2p의 ㅁ관문
+node Node as node {
+    [Service]
+    [Server]
+
+}
+
+' EventBus By lahja lib: inter-process communication, based on non-blocking asyncio.
+
+' PlugIns
+[PlugIn Manager] as pg_manager #ddffdd
+collections Plugins as pg
+
+' DB
+[DB Manager] as db_manager <<DB server>> #aaaaff
+database DB <<levelDB>>
+
+'----- Relations
+' main
+main -left- main_bus
+main -- network: new proc
+main -- db_manager: new proc
+network .right.> db_manager: manipulate (Not Direct)
+
+' db
+db_manager .. DB: Server-Client.\n pluggable by mp.manager
+
+' network
+network -down- node
+network -down- pg_manager
+pg_manager -[hidden]r- node
+
+network -left- bus
+pg_manager -down- pg
+
+main_bus <.down.> bus
+pg <.right.> bus
+
+
+
+
+@enduml
