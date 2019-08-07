@@ -3,85 +3,142 @@
 title Ultimate Tx-Flow (create_icx_tx)
 
 ' === Define participants
-participant Iconist as user
-participant IconScore as score
+actor Iconist as user
 
 box icon-rpc-server #AAAAFF
     participant RESTServer as rest
-    participant IcxDispatcher as dispatcher
 end box
 
-box Loopchain #FFAAAA
+box icon-service #AFAFAF
+    participant IconScore as score
+end box
+
+box Channel #FAFAFA
     participant ChannelTxCreator as tx_creator
+    participant ChannelService as channel_service
     participant BroadcastScheduler as broadcaster
-    participant TimerService as timer
-    participant ChannelTxReceiver as tx_receiver
     participant BlockManager as block_manager
+    participant ChannelTxReceiver as tx_receiver
+end box
+
+box loopchain #FFAAAA
+    participant PeerOuterService as peer_outer
 end box
 
 box ConsensusStage #AAFFAA
-    participant ChannelStateMachine as fsm
     participant ConsensusSiever as siever
-    participant ChannelService as channel_service
+    participant Epoch as epoch
+    participant BlockChain as block_chain
 end box
 
-participant PeerOuterService as peer_outer
 
-' === Relations
-' --- Request to icon-rpc-server
-'user -> rest: request (../api/v3/..)
-'
-'rest -> dispatcher: method matched to \nicx_sendTransaction()
-'dispatcher -> score: validation_transaction()
-'score --> dispatcher: response_to_json_query
-'
-'dispatcher -> tx_creator: create_icx_tx() (rabbitMQ)
-'' --- loopchain
-'' Verify Tx
-'tx_creator -> tx_creator: serialize request to make tx
-'tx_creator -> tx_creator: **verify tx (1)**
-'tx_creator -> tx_creator: pre_validate tx \n(time bound check)
-'
-'' BroadcastScheduler
-'tx_creator -> broadcaster: schedules CREATE_TX job \n(tx, tx_versioner)
-'' --- loopchain end
-'tx_creator --> dispatcher: status_code, tx_hash
-'dispatcher -> rest: result
-'user <-- rest: response (json)
-'
-'' --- loopchain
-'' BroadcastScheduler
-'broadcaster -> broadcaster: store Tx in stored_tx
-'' Add timer to timer service and wait...
-'note over broadcaster: wait for more tx...
-'broadcaster ->o peer_outer: AddTxList (gRPC call)
-'note right: Broadcast to Other Peers (include self)
-'activate peer_outer
-'
-'' --- Another Peer
-'peer_outer -> tx_receiver: add_tx_list() - tx_list
-'activate tx_receiver
-'tx_receiver -> tx_receiver: **verify received Tx(2)**
-'tx_receiver -> tx_receiver: tx.size()
-'note right #red: size 무엇???
-'
-'tx_receiver -> tx_receiver: push tx_list to tx_queue
-'tx_receiver --> peer_outer: response code with message
-'deactivate tx_receiver
-'note right: Response to Original Broadcaster
-'peer_outer -->o broadcaster: response code with message (rabbitMQ)
-'deactivate peer_outer
+' ----- Relations
+==REST START==
+activate user
 
-==Block==
-tx_receiver -> block_manager: push tx to AgingCache
-'tx_receiver -> timer: start_leader_complain_timer_if_tx_exists
-'siever -> channel_service : turn_on_leader_complain_timer
-'note right: [useless] State of Leader: BlockGenerate
-channel_service -> channel_service : check AgingCache and \nstart__leader_complain_timer_if_tx_exists
+user -> rest: request icx_sendTransaction (../api/v3/..)
+activate rest
+rest -> score: validation_transaction(request)
+activate score
+score --> rest: response (json)
+deactivate score
+rest -> tx_creator: create_icx_tx() (rabbitMQ)
 
-' ============= Comments =============
-'verify below
-' - pre_verify: invalid nid
+note over tx_creator: create_icx_tx
+activate tx_creator
+note over tx_creator #red: TODO: QoS here is inadequate. \nMove to REST!
+tx_creator -> tx_creator: **verify tx (1)**
+tx_creator -> broadcaster: CREATE_TX command
+activate broadcaster
+tx_creator --> rest: status_code, tx_hash (rabbitMQ)
+deactivate tx_creator
+user <-- rest: tx hash
+note over user: happy end
+destroy rest
+destroy user
+
+==STAGE: Initial Broadcast==
+activate block_manager
+note over broadcaster: wait to make tx_list...
+note over peer_outer: Broadcast to Other Peers (include self)
+broadcaster ->o peer_outer: AddTxList (gRPC)
+deactivate broadcaster
+
+' --- Another Peer
+peer_outer -> tx_receiver: add_tx_list(tx_list)
+activate peer_outer
+activate tx_receiver
+tx_receiver -> tx_receiver: **verify tx**
+tx_receiver -> tx_receiver: cache len(serialized_tx)
+
+tx_receiver -> block_manager: (__add_tx_list) \npush each tx to AgingCache
+activate block_manager #yellow
+tx_receiver -> peer_outer: response_code, message
+deactivate tx_receiver
+
+note over peer_outer: response code with message (gRPC)
+note over peer_outer #red: to whom?
+deactivate peer_outer
+
+==If Leader Peer (State BlockGenerate)==
+activate siever
+block_manager -> siever: last_block
+siever -> epoch: last_block, last_block_votes
+epoch -> siever: block_builder
+channel_service -> siever: next_leader
+siever -> siever: build_candidate_block\n(block_builder, next_leader, vote_result)
+siever -> score: invoke(candidate_block, last_block, ...)
+score -> siever: invoke_result
+
+==STAGE: AnnounceUnconfirmedBlock==
+note over broadcaster: Broadcast to others
+siever -> broadcaster: BROADCAST cmd with candidate_block
+activate broadcaster
+broadcaster ->o peer_outer: AnnounceUnconfirmedBlock(candidate_block)
+deactivate broadcaster
+
+==In Validator Peer (State Vote)==
+activate peer_outer
+peer_outer -> channel_service: announce_unconfirmed_block\n(candidate_block)
+activate channel_service
+channel_service -> block_chain: candidate_block
+block_chain -> channel_service: unconfirmed_block
+channel_service -> block_manager: verify_confirm_info\n(unconfirmed_block)
+note over channel_service: Set state: Vote
+channel_service -> block_manager: vote_as_peer(unconfirmed_block)
+block_manager -> block_chain: set unconfirmed_block as last_unconfirmed_block
+block_manager -> block_manager: block verify
+block_manager -> block_manager: add unconfirmed_block in candidate_blocks
+block_manager -> block_manager: vote_unconfirmed_block
+block_manager -> block_manager: add BlockVote to candidate_blocks
+note over block_manager: if self == Leader: send vote to siever
+block_manager -> broadcaster: BROADCAST cmd with BlockVote
+
+==STAGE: VoteUnconfirmedBlock==
+broadcaster ->o peer_outer: VoteUnconfirmedBlock(BlockVote)
+activate broadcaster
+peer_outer -> channel_service: vote_unconfirmed_block(BlockVote)
+channel_service -> block_manager: add vote to candidate_blocks
+note over block_manager: if self == Leader: send vote to siever
+note over peer_outer: Reply to whom??
+deactivate broadcaster
+
+channel_service -> peer_outer: None
+deactivate peer_outer
+note over peer_outer: Reply to whom??
+
+note over broadcaster: wait until voting is completed
+siever -> siever: new_epoch
+
+...
+
+siever -> siever: if last_unconfirmed_block...(__add_block_and_new_epoch \n(block_builder, last_unconfirmed_block))
+siever -> block_chain: add_block(block, vote)
+siever -> block_manager: remove candidate_blocks
+siever -> block_chain: remove last_unconfirmed_block
+siever -> siever: increase made_block_count
+siever -> epoch: new_epoch
+
 
 
 ' ============= Comments =============
