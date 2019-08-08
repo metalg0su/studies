@@ -1,0 +1,39 @@
+@startuml
+title Ultimate Tx-Flow (create_icx_tx: 2. BROADCAST)
+hide footbox
+
+box Peer #AFAFAF
+    participant BroadcastScheduler as broadcaster
+    participant BlockManager as block_manager
+    participant ChannelTxReceiver as tx_receiver
+end box
+
+participant PeerOuterService as peer_outer
+
+[-> broadcaster: CREATE_TX command with tx
+activate broadcaster
+==STAGE: Initial Broadcast==
+
+activate block_manager
+note over broadcaster: wait to make tx_list...
+broadcaster -[#blue]>o peer_outer: AddTxList (gRPC)
+note right: Broadcast to Other Peers (include self)
+activate peer_outer
+deactivate broadcaster
+
+' --- Another Peer
+peer_outer -> tx_receiver: add_tx_list(tx_list)
+activate tx_receiver
+tx_receiver -> tx_receiver: **verify tx**
+tx_receiver -> tx_receiver: cache len(serialized_tx)
+
+tx_receiver -> block_manager: __add_tx_list
+note over block_manager: push each Txs to AgingCache queue
+activate block_manager #yellow
+tx_receiver -> peer_outer: response_code, message
+deactivate tx_receiver
+
+note over peer_outer: response code with message (gRPC)
+note over peer_outer #red: to whom?
+destroy peer_outer
+@enduml

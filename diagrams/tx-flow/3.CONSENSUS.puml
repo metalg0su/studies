@@ -1,0 +1,106 @@
+@startuml
+title Ultimate Tx-Flow (create_icx_tx)
+
+' === Define participants
+participant BlockManager as block_manager
+participant ConsensusSiever as siever
+participant BroadcastScheduler as broadcaster
+participant PeerOuterService as peer_outer
+participant ChannelService as channel_service
+
+
+' ----- Relations
+activate block_manager #yellow
+
+==If Leader Peer (State BlockGenerate)==
+activate siever
+ref over block_manager
+    Assume that has no last_unconfirmed_block.
+end
+block_manager -> siever: confirmed last block or genesis_block
+
+siever -> siever: build_candidate_block\n(block_builder, next_leader, vote_result)
+siever -> siever: score_invoke(candidate_block, last_block, ...) \nand get candidate_block, invoke_result
+
+==STAGE: AnnounceUnconfirmedBlock==
+note over block_manager: start candidate_blocks life
+siever -> block_manager: add candidate_block to candidate_blocks
+activate block_manager
+
+siever -> block_manager: self vote to candidate_block **(first vote)**
+siever -> block_manager: set candidate_block as last_unconfirmed_block (at block_chain)
+note over siever #FFAAAA: wait for votes toward this unconfirmed_block
+
+note over broadcaster: Broadcast to others
+siever -> broadcaster: BROADCAST job (candidate_block)
+activate broadcaster
+broadcaster ->o peer_outer: AnnounceUnconfirmedBlock(candidate_block)
+deactivate broadcaster
+
+activate peer_outer
+
+==At Validator Peer (State Vote)==
+note over channel_service: announce_unconfirmed_block()
+peer_outer -> channel_service: candidate_block
+deactivate peer_outer
+
+activate channel_service
+channel_service -> channel_service: verify candidate_block \n(at block_chain)
+note over channel_service: set state Vote. _do_vote()
+channel_service -> block_manager: unconfirmed_block
+
+
+note over block_manager: vote_as_peer()
+block_manager -> block_manager: verify some
+note over block_manager
+    Verify:
+    - block already exists
+    - last_block.hash == prev_hash
+    - ...
+end note
+
+block_manager -> block_manager: set unconfirmed_block \nas last_unconfirmed_block \n(at block_chain)
+block_manager -> block_manager: verify block
+block_manager -> block_manager: add unconfirmed_block to candidate_blocks
+
+block_manager -> block_manager: vote_unconfirmed_block
+block_manager -> block_manager: add BlockVote to candidate_blocks
+note over block_manager #FFAAAA: if self == Leader: self vote.
+
+block_manager -> broadcaster: BROADCAST job (BlockVote)
+activate broadcaster
+broadcaster ->o peer_outer: VoteUnconfirmedBlock(BlockVote)
+deactivate broadcaster
+
+==STAGE: VoteUnconfirmedBlock (Leader)==
+note over channel_service: vote_unconfirmed_block
+activate peer_outer
+peer_outer -> channel_service: BlockVote
+deactivate peer_outer
+
+channel_service -> block_manager: add BlockVote to candidate_blocks
+note over block_manager: if self == Leader: self vote.
+note over block_manager #red: leader vote twice (second vote?????)
+
+block_manager -> siever: vote.is_completed()!
+deactivate block_manager
+note over siever #FFAAAA: vote.is_completed()!
+
+
+==New Consensus Loop==
+block_manager -> siever: last_unconfirmed_block
+note over block_manager: vote already ends?
+siever -> block_manager: add_block(last_unconfirmed_block) (to blockchain)
+siever -> block_manager: reset candidate_blocks
+siever -> block_manager: reset last_unconfirmed_block
+siever -> siever: increase made_block_count
+siever -> siever: new_epoch
+
+...INFINITE...
+
+' ============= Comments =============
+'verify below
+' - pre_verify: invalid nid
+' - verify: verify_loosely
+' - verify_loosely: hash, signature, is_unique_hash
+@enduml

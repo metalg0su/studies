@@ -1,0 +1,47 @@
+@startuml
+title Ultimate Tx-Flow (create_icx_tx: 1. REST)
+hide footbox
+
+actor Iconist as user
+
+box icon-rpc-server #AAAAFF
+    participant RESTServer as rest
+end box
+
+box icon-service #AFAFAF
+    participant IconScore as score
+end box
+
+box Channel #FAFAFA
+    participant ChannelTxCreator as tx_creator
+    participant BroadcastScheduler as broadcaster
+end box
+
+activate user
+
+==REST START==
+user -> rest: request icx_sendTransaction (../api/v3/..)
+activate rest
+rest -> score: validation_transaction(request)
+activate score
+score --> rest: response (json)
+deactivate score
+rest -> tx_creator: create_icx_tx() (rabbitMQ)
+
+note over tx_creator: create_icx_tx
+activate tx_creator
+note over tx_creator #red: TODO: QoS here is inadequate. \nMove to REST!
+tx_creator -> tx_creator: **verify tx (1)**
+tx_creator -> broadcaster: CREATE_TX command
+activate broadcaster
+tx_creator --> rest: status_code, tx_hash (rabbitMQ)
+deactivate tx_creator
+user <-- rest: tx hash
+note over user: happy end
+destroy rest
+destroy user
+
+==STAGE: Initial Broadcast==
+note over broadcaster: Broadcast to Other Peers
+...
+@enduml

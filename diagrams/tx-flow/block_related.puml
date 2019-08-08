@@ -1,0 +1,178 @@
+@startuml
+title Relations
+hide members
+
+package Votes {
+    abstract Vote {
+        + rep
+        + timestamp
+        + signature
+
+        + origin_args()
+        + hash()
+        + serialize()
+        + verify()
+        + result()
+        + new()
+        + empty()
+        + deserialize()
+        + to_origin_data()
+        + to_hash()
+    }
+
+    class BlockVote {
+        + block_height
+        + block_hash
+
+        + result
+    }
+
+    class LeaderVote <<Complain Vote>> {
+        + block_height
+        + old_leader
+        + new_leader
+    }
+
+    class BlockVotes
+    class LeaderVotes
+}
+
+package Etc {
+    abstract Transaction
+    class BlockVersion << namedtuple >>
+
+    class TransactionVersioner
+    class BlockVersioner {
+        - _versions
+
+        + add_version()
+        + get_version()
+        + get_height()
+        + get_hash()
+    }
+
+    class Signer
+    class SignVerifier
+
+}
+
+package Blocks {
+    annotation Block
+    annotation BlockBody
+    annotation BlockHeader
+
+    abstract BlockBuilder << Build Block >> {
+        ~ version
+        ~ BlockHeaderClass
+        ~ BlockBodyClass
+
+        + height
+        + prev_hash
+        + signer
+        + transactions
+        + block
+        + hash
+        + signature
+        + peer_id
+        - _tx_versioner
+
+        + size()
+        + build()
+        + build_block()
+        ~ build_block_header_data()
+        ~ build_block_body_data()
+        + sign()
+        + new()
+        + from_new()
+        + from_()
+    }
+
+    class CandidateBlocks {
+        + CandidateBlock blocks
+
+        + add_vote()
+        + get_votes()
+        + add_block()
+        + remove_block()
+    }
+
+    class CandidateBlock << last_unconfirmed_block >> {
+        + BlockVotes votes
+    '    + List[BlockVote] votes_buffer
+        + start_time
+        + hash
+        + height
+        - Block block
+
+        + block()
+        + add_vote()
+    }
+
+}
+
+package Types {
+    class Bytes << (T, #FF7700) Type >>
+    annotation Varbytes << (T, #FF7700) Type >>
+    annotation Hash32 << (T, #FF7700) Type >>
+    annotation BloomFilter << (T, #FF7700) Type >>
+    annotation Signature << (T, #FF7700) Type >>
+
+    abstract Address
+    abstract AddressEx
+    class ExternalAddress << (T, #FF7700) Type >>
+    class ContractAddress << (T, #FF7700) Type >>
+    class ExternalAddressEx << (T, #FF7700) Type >>
+    class ContractAddressEx << (T, #FF7700) Type >>
+
+    class MalformedStr << (?, #BBFF88) Type >>
+}
+
+' Relations ---
+' Types ---
+Bytes <|-- Varbytes
+Bytes <|-- Address
+Bytes <|-- AddressEx
+Bytes <|-- Signature
+
+Varbytes <|-- Hash32
+Varbytes <|-- BloomFilter
+
+Address <|-- ExternalAddress
+Address <|-- ContractAddress
+
+AddressEx <|-- ExternalAddressEx
+AddressEx <|-- ContractAddressEx
+
+' Votes ---
+Vote <|-- BlockVote
+Vote <|-- LeaderVote
+
+LeaderVotes o-- LeaderVote: List
+BlockVotes o-- BlockVote: List
+
+' Blocks ---
+Block *-- BlockHeader
+Block *-- BlockBody
+
+BlockBuilder *-- Block
+BlockBuilder *-- Signer
+BlockBuilder *-- Signature
+
+BlockVersioner *-- BlockVersion: 1:n
+
+' Etc ---
+Transaction *-- Hash32
+Transaction *-- Signature
+Transaction <--> TransactionVersioner: Interact
+
+SignVerifier <|-- Signer
+
+
+' Inter-relations ---
+CandidateBlocks *-- CandidateBlock: 1:n
+CandidateBlock *-- Block: 1:1
+CandidateBlock *-- BlockVotes: 1:1
+
+
+
+@enduml
