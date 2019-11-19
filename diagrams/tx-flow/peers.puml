@@ -1,0 +1,39 @@
+@startuml
+scale 1024 width
+scale 768 height
+
+concise "Leader" as leader
+concise "Validator0" as peer0
+concise "Validator1" as peer1
+concise "Validator2" as peer2
+
+
+leader is InitComponents
+peer0 is InitComponents
+peer1 is InitComponents
+peer2 is InitComponents
+
+@0
+leader is BlockSync
+peer0 is BlockSync
+peer1 is BlockSync
+peer2 is BlockSync
+
+@1
+leader is BlockSync
+peer0 is BlockSync
+peer1 is BlockSync
+peer2 is BlockSync
+
+@2
+leader is BlockGenerate
+peer0 is Vote
+peer1 is Vote
+peer2 is Vote
+
+@3
+leader is BlockGenerate
+peer0 is Vote
+peer1 is Vote
+peer2 is Vote
+@enduml

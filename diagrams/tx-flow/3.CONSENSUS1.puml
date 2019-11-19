@@ -1,0 +1,56 @@
+@startuml
+!pragma teoz true
+
+' ----- Definition
+participant "Leader" as leader
+collections "Nodes" as nodes
+
+' ----- Relations
+==Start Loop!==
+activate leader
+loop Consensus Loop
+...
+leader -> leader: check complaint votes of last round
+leader -> leader: get votes of (n-1)th block
+
+alt has (n-1)th block?
+leader -> leader: ADD (n-1)th block to DB
+end
+
+leader -> leader: build n th block
+leader -->o nodes: broadcast n th block (**AnnounceUnconfirmedBlock**)
+& leader -->o]:
+leader -> leader: self vote to n th block
+leader -->o nodes: broadcast vote of n th block (**VoteUnconfirmedBlock**)
+& leader -->o]
+...Waiting for votes...
+
+==Global Vision==
+par AnnounceUnconfirmedBlock
+leader -->o nodes: n th block from leader
+activate nodes #aaafff
+nodes -> nodes: verify_confirm_info of n th block
+alt need_to_confirm?
+    nodes -> nodes: ADD (n-1)th block to DB
+    nodes ->nodes: set n th block as last_unconfirmed_block
+end
+nodes -> nodes: verify n th block
+nodes -> nodes: add n th block to candidate_blocks
+nodes -> nodes: vote to the candidate_block
+leader o<-- nodes: broadcast my vote (**VoteUnconfirmedBlock**)
+& nodes -->o]: broadcast my vote (**VoteUnconfirmedBlock**)
+deactivate leader
+deactivate nodes
+
+else VoteUnconfirmedBlock
+leader -->o nodes: vote of n th block from the others
+& nodes o<--]
+activate nodes #fffaaa
+nodes -> nodes: add the vote to candidate_block
+deactivate leader
+deactivate nodes
+end
+
+==Restart Loop!==
+end
+@enduml
