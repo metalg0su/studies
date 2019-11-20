@@ -1,0 +1,26 @@
+@startuml
+'----- Declaration
+enum "PeerThreadStatus" as status
+class "_Broadcaster" as _bc
+abstract class "Broadcastscheduler" as bc_scheduler
+class "_BroadcastThread" as _bc_thread
+class "_BroadcastSchedulerThread" as _bc_scheduler_thread
+class "_BroadcastSchedulerMp" as _bc_scheduler_mp
+class "_BroadcastSchedularFactory" as _bc_factory
+class "CommonThread" as common_thread
+
+
+'----- Relations
+common_thread <|-- _bc_thread
+
+status <-- _bc
+_bc <-- _bc_scheduler_mp
+_bc <-- _bc_thread
+
+_bc_thread <-- _bc_scheduler_thread
+bc_scheduler <|.. _bc_scheduler_mp
+bc_scheduler <|.. _bc_scheduler_thread
+
+_bc_scheduler_mp <.. _bc_factory
+_bc_scheduler_thread <.. _bc_factory
+@enduml
