@@ -1,0 +1,31 @@
+@startuml
+class "Queue" as queue
+
+class "TxMessagesQueue" as tx_queue {
+    + get()
+    + append()
+    + remain()
+    + size()
+}
+
+class "TxMessages" as tx_messages {
+    - transactions
+    + append()
+    + get_messages()
+    + reset()
+}
+
+class "TxItem" as tx_item {
+    + get_tx_message(): TxSend
+}
+
+'Relations
+tx_messages "1" o-- "many" tx_item: transactions
+
+
+'tx_queue -> queue
+'tx_queue --> tx_messages
+'queue *-- tx_messages
+'???/
+
+@enduml
