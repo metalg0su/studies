@@ -1,0 +1,24 @@
+@startuml
+start
+:config 파일에서 `crep_root_hash`값을 로드;
+note right
+    ChannelProperty를 통해 전역변수 형태로 저장
+end note
+
+partition PeerLoader.load {
+    if (hash와 일치하는 rep 데이터가 db에 존재?) then (yes)
+        :DB에서 rep 목록 로드;
+    elseif (channel_manage_data가 존재?) then (yes)
+        :channel_manage_data file을 읽어서 rep 목록 구성;
+    else (no)
+        :다른 피어에게 REST로 물어봐서 rep 목록 구성;
+        note right
+            최초 conf에 crep_root_hash가 없으면
+            여길 탈 겁니다.
+        end note
+    endif
+    :얻은 reps_hash와 rep 목록을 반환;
+}
+:얻은 reps_hash가 DB없으면 DB에 reps_hash 및 rep 목록 쓰기;
+stop
+@enduml
