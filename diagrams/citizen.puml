@@ -1,13 +1,13 @@
 @startuml
 ' === Declaration
-box Child #AAAAFF
+box "Child" #AAAAFF
     participant StateMachine as fsm
     participant ChannelService as chan
     participant NodeSubscriber as subscriber
 '    participant RPC_server as rpc_serv
 end box
 
-box Parent #FFFAAA
+box "Parent" #FFFAAA
     participant receiption as receipt
 end box
 
