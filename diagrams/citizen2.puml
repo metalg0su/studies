@@ -1,0 +1,82 @@
+@startuml
+title 부모 자식 관계 도식
+
+'Relations
+box "Child" #AAAAFF
+    participant ChannelService as child_channel
+    participant NodeSubscriber as subscriber
+end box
+
+box "Parent" #FFFAAA
+    participant Reception as reception
+    participant ChannelService as parent_channel
+end box
+
+'Definitions
+-> child_channel: transition
+note over child_channel #AAFFAA: Entered State 'SubscribeNetwork'
+child_channel -> subscriber: subscriber start
+activate subscriber
+note over child_channel: Wait until event is set
+activate child_channel 
+
+==Stage: Prepare Connection==
+subscriber -> reception: websockets.connect
+
+==Stage: Handshake==
+subscriber -> reception: node_ws_Subscribe
+note right #78F0F0: height, peer_id
+reception -> parent_channel: register child node
+reception-> subscriber: Send initial Heartbeat
+
+subscriber -> child_channel: release
+note left: Event released!
+deactivate child_channel 
+note over child_channel #AAFFAA: Entered State 'Watch'
+
+==Stage: Run==
+note over subscriber, reception #AAFFAA: 3 actions at the same time...
+group [async loop] publish_new_block
+    reception -> parent_channel: announce_new_block
+    parent_channel -> reception: block and votes
+    reception -> subscriber: node_ws_PublishNewBlock
+    note left #78F0F0: block and votes
+    note over subscriber: Verify block
+    subscriber -> child_channel: add_confirmed_block
+    note left #78F0F0: block
+    note over child_channel: Write block to DB
+    subscriber -> child_channel: Reset monitoring timer
+end group
+
+group [async loop] publish_heartbeat
+    note over subscriber, reception #AAFFAA: Do every `WS_HEARTBEAT_TIME` secs.
+    reception -> subscriber: node_ws_PublishHeartbeat
+end group
+
+group [async loop] publish_unregister
+    reception -> parent_channel: wait_for_unregister_signal
+    activate reception
+    note over reception: Wait until event is set
+    note over parent_channel: Become a leader!
+    parent_channel -> reception: release
+    reception -> subscriber: send_exception
+    note over subscriber #FFAAAA: Move to Stage `Close`
+    deactivate reception
+end group
+
+==Stage: Close==
+reception -> subscriber: send_exception
+note right #FFAAAA: If exception from Parent Side!
+subscriber -> reception: close 
+note left #FFAAAA: If exception from Child Side!
+note over reception: Disconnected
+reception -> parent_channel: unregister_citizen
+note right #78F0F0: peer_id
+
+subscriber -> child_channel: notify to change state
+deactivate subscriber
+note over child_channel #AAFFAA: Entered State [**BlockSync**|**SubscribeNetwork**]
+
+
+
+@enduml
