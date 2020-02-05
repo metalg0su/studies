@@ -1,0 +1,86 @@
+@startuml
+'Declaration
+box "BroadcastScheduler"
+    participant BroadcastScheduler as bs
+    queue BroadcastQueue as bs_queue
+    queue Listners as bs_listners
+end box
+
+box "Broadcaster"
+    participant Broadcaster as bc
+    queue TxQueue as bc_queue
+    participant TimerService as timer
+
+    participant RealBroadcaster as bc_real
+end box
+
+participant StubManager as stub_manager
+
+'Relations
+[-> bs_listners: Add schedule_listner by (BroadcastCommand, params)
+
+==Before handlers==
+[-> bs: (BroadcastCommand, params)
+bs -> bs_queue: (BroadcastCommand, params)
+bs -> bs_listners: Get callback of (BroadcastCommand, params)
+note over bs: Call schedule_listner
+
+group loop
+    bs_queue --> bs: (BroadcastCommand, params)
+    bs -> bc: (BroadcastCommand, params)
+end group
+note over bc: Pass params to proper handler func
+
+==Handlers==
+alt HANDLER_CREATE_TX
+    bs -> bc: (CREATE_TX, tx)
+    activate bc
+    note over bc: Make TxItem by given Tx.
+    bc -> bc_queue: TxItem
+    activate bc_queue
+    bc -> timer: Set timer callback after n sec
+    activate timer
+    ...
+    timer --> bc: Notify callback
+    deactivate timer
+
+    group Until queue is empty
+        bc_queue --> bc: All TxItems
+        deactivate bc_queue
+        bc -> bc: make_tx_list_message
+        bc -> bc_real: (**AddTxList**, message)
+        deactivate bc
+    end group
+
+else HANDLER_UPDATE_AUDIENCE
+    bs -> bc: (UPDATE_AUDIENCE, audience_targets)
+    activate bc
+    group loop
+        bc -> bc: add each target
+        bc -> bc: remove each target
+        deactivate bc
+    end group
+
+else HANDLER_BROADCAST
+    bs -> bc: (**RPC_METHOD_NAME**, rpc_args, rpc_kwargs)
+    activate bc
+    note over bc
+        RPC_METHOD_NAME could be one of:
+        - AnnounceUnconfirmedBlock
+        - ComplainLeader
+        - VoteUnconfirmedBlock
+    end note
+    bc -> bc_real: (**rpc_method_name**, rpc_args, rpc_kwargs)
+    deactivate bc
+end alt
+
+==Broadcast==
+bc_real -> stub_manager: (methods_name, message ...)
+stub_manager ->] : Broadcast to the other nodes!!
+
+'=====Not used?
+'group HANDLER_BROADCAST
+'end group
+'group HANDLER_SEND_TO_SINGLE_TARGET
+'end group
+@enduml

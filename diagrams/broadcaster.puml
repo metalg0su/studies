@@ -1,26 +1,58 @@
 @startuml
 '----- Declaration
-enum "PeerThreadStatus" as status
-class "_Broadcaster" as _bc
-abstract class "Broadcastscheduler" as bc_scheduler
-class "_BroadcastThread" as _bc_thread
-class "_BroadcastSchedulerThread" as _bc_scheduler_thread
-class "_BroadcastSchedulerMp" as _bc_scheduler_mp
-class "_BroadcastSchedularFactory" as _bc_factory
+'etc
 class "CommonThread" as common_thread
+class "ModuleProcess" as module_process
+
+'broadcasters
+class "Broadcaster" as bc {
+    - audience
+    - channel
+
+    + handle_command()
+}
+
+abstract class "Broadcastscheduler" as bc_scheduler {
+    + add_schedule_listner()
+    + remove_schedule_listener()
+    + schedule_job()
+    + schedule_broadcast()
+    + reset_audience_reps_hash()
+}
+
+class "BroadcastThread" as bc_thread {
+}
+
+class "BroadcastSchedulerThread" as bc_scheduler_thread {
+}
+
+class "BroadcastSchedulerMp" as bc_scheduler_mp {
+}
+
+class "BroadcastSchedulerFactory" as bc_factory {
+    + new()
+}
+
 
 
 '----- Relations
-common_thread <|-- _bc_thread
+'Additional
+common_thread <|-- bc_thread
 
-status <-- _bc
-_bc <-- _bc_scheduler_mp
-_bc <-- _bc_thread
+'broadcast_scheduler
+bc_scheduler <|. bc_scheduler_mp
+bc_scheduler_thread .|> bc_scheduler
 
-_bc_thread <-- _bc_scheduler_thread
-bc_scheduler <|.. _bc_scheduler_mp
-bc_scheduler <|.. _bc_scheduler_thread
+'factory
+bc_scheduler_thread <.. bc_factory: new
+bc_scheduler_mp <.. bc_factory: new
 
-_bc_scheduler_mp <.. _bc_factory
-_bc_scheduler_thread <.. _bc_factory
+'Thread
+bc_thread <. bc_scheduler_thread
+bc <.. bc_thread
+
+'Process
+bc <. bc_scheduler_mp
+module_process <.. bc_scheduler_mp
+
 @enduml
