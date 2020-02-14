@@ -1,0 +1,37 @@
+@startuml
+
+'Declaration
+class "RestClient" as rest_client {
+    - channel_name
+    - latest_target
+    + target
+
+    + init()
+    + init_next_target()
+    + create_url()
+    + create_params()
+    + call()
+    + call_async()
+}
+
+Enum "RestMethod" as rest_method {
+    Node API
+    + GetChannelInfos
+    + GetBlockByHeight
+
+    V1 API
+    + Status
+
+    V2 API
+    + SendTransaction2
+
+    V3 API
+    + GetLastBlock
+    + GetReps
+    + SendTransaction3
+}
+
+'Relations
+rest_client  -> rest_method
+
+@enduml
