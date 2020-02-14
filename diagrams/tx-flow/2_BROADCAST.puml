@@ -2,7 +2,7 @@
 title Ultimate Tx-Flow (create_icx_tx: 2. BROADCAST)
 hide footbox
 
-box Peer #AFAFAF
+box "Peer" #AFAFAF
     participant BroadcastScheduler as broadcaster
     participant BlockManager as block_manager
     participant ChannelTxReceiver as tx_receiver

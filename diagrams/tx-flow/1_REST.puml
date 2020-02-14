@@ -4,15 +4,15 @@ hide footbox
 
 actor Iconist as user
 
-box icon-rpc-server #AAAAFF
+box "icon-rpc-server" #AAAAFF
     participant RESTServer as rest
 end box
 
-box icon-service #AFAFAF
+box "icon-service" #AFAFAF
     participant IconScore as score
 end box
 
-box Channel #FAFAFA
+box "Channel" #FAFAFA
     participant ChannelTxCreator as tx_creator
     participant BroadcastScheduler as broadcaster
 end box
