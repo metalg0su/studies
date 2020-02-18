@@ -10,45 +10,63 @@ collections "Nodes" as nodes
 activate leader
 loop Consensus Loop
 ...
-leader -> leader: check complaint votes of last round
-leader -> leader: get votes of (n-1)th block
+note over leader
+    - last_unconfirmed_block: N-1
+    - candidate_block: N
+end note
 
-alt has (n-1)th block?
-leader -> leader: ADD (n-1)th block to DB
+
+note over leader #FFFFAA
+    - Complained last round?
+    - New term in last_unconfirmed_block?
+end note
+
+leader -> leader: **makeup_block**: Build candidate_block builder
+alt has last_unconfirmed_block?
+    leader -> leader: **add_block**: add last_unconfirmed_block to DB
 end
 
-leader -> leader: build n th block
-leader -->o nodes: broadcast n th block (**AnnounceUnconfirmedBlock**)
-& leader -->o]:
-leader -> leader: self vote to n th block
-leader -->o nodes: broadcast vote of n th block (**VoteUnconfirmedBlock**)
+leader -> leader: **score_invoke**: with (N, N-1)
+leader -->o nodes: **AnnounceUnconfirmedBlock**: broadcast candidate_block
 & leader -->o]
+
+note over leader #FFFFAA
+    **N is now N-1**: set candidate_block as last_unconfirmed_block
+end note
+leader -->o nodes: **VoteUnconfirmedBlock**: Self voting of candidate_block then broadcast the vote.
+& leader -->o]
+
 ...Waiting for votes...
 
-==Global Vision==
+'================================================================================
+==Global Overview==
 par AnnounceUnconfirmedBlock
-leader -->o nodes: n th block from leader
+leader -->o nodes: candidate_block
+note over nodes #FFFFAA
+    As a Leader, this is candidate_block
+    As a Node, this is unconfirmed_block
+end note
+
 activate nodes #aaafff
-nodes -> nodes: verify_confirm_info of n th block
-alt need_to_confirm?
-    nodes -> nodes: ADD (n-1)th block to DB
-    nodes ->nodes: set n th block as last_unconfirmed_block
-end
-nodes -> nodes: verify n th block
-nodes -> nodes: add n th block to candidate_blocks
-nodes -> nodes: vote to the candidate_block
-leader o<-- nodes: broadcast my vote (**VoteUnconfirmedBlock**)
-& nodes -->o]: broadcast my vote (**VoteUnconfirmedBlock**)
+nodes -> nodes: verify_confirm_info (prev_vote)
+nodes -> nodes: Transition state to **Vote**
+
+nodes -> nodes: **add_unconfirmed_block**
+note over nodes
+    - verify the block then confirm prev block by votes of current block
+    - verify votes then vote to block
+end note
+
+leader o<-- nodes
+& nodes -->o]: **VoteUnconfirmedBlock**: broadcast my vote
+
 deactivate leader
 deactivate nodes
 
+'---------------------------------------------------------------------
 else VoteUnconfirmedBlock
-leader -->o nodes: vote of n th block from the others
+leader -->o nodes: vote from the others
 & nodes o<--]
-activate nodes #fffaaa
-nodes -> nodes: add the vote to candidate_block
-deactivate leader
-deactivate nodes
 end
 
 ==Restart Loop!==
