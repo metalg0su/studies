@@ -36,6 +36,11 @@ tx_creator -> broadcaster: CREATE_TX command
 activate broadcaster
 tx_creator --> rest: status_code, tx_hash (rabbitMQ)
 deactivate tx_creator
+
+alt status_code : no permission?
+    rest ->o]: request icx_sendTransaction to **ANOTHER NODE**
+    rest <--]: tx_hash
+end
 user <-- rest: tx hash
 note over user: happy end
 destroy rest
