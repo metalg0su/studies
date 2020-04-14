@@ -1,0 +1,19 @@
+@startuml
+title 3.0을 위한 최소 사양 개요도
+
+() EventSystem as es
+node Loopchain {
+    collections Components as lc
+}
+node LFT {
+    [Consensus] as lft
+    [BlockFactory] as df
+    [BlockVoteFactory] as vf
+}
+
+lc ..( es
+es ).. lft
+
+lft -> vf: Create Vote
+df <- lft: Create Block
+@enduml
