@@ -12,6 +12,11 @@ leader is "..."
 validator is "..."
 validator_is is "..."
 
+legend
+- Yellow: Network blocking
+- Red: Create Block
+end legend
+
 ' =====LEADER
 @leader
 0 is "Verify (n-1)"
@@ -79,4 +84,5 @@ validator_is -> validator
 +250 is "Invoke"
 +50 is {-}
 validator_is -> validator
+
 @enduml
