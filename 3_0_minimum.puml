@@ -1,5 +1,5 @@
 @startuml
-title 3.0을 위한 개요도
+title 3.0을 위한 컴포넌트 개요도
 
 ' Definition
 node Loopchain {
