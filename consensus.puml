@@ -1,0 +1,82 @@
+@startuml
+Title: 변화된 합의 과정
+
+concise "ICONService(Leader)" as leader_is
+concise "Node(Leader)" as leader
+concise "Node(Validators)" as validator
+concise "ICONService(Validators)" as validator_is
+
+' Initial status
+leader_is is "..."
+leader is "..."
+validator is "..."
+validator_is is "..."
+
+' =====LEADER
+@leader
+0 is "Verify (n-1)"
+leader@+25 -> leader_is@+25: Invoke
+
++100 is "BroadcastVote"  #FFFFAA
+leader -> validator@+25: Vote (n-1)
+
++50 is "Write (n-1)"
+
++50 is "Create (n)"  #FFAAAA
+leader@+25 -> leader_is@+25: Pre-Invoke
+
++50 is "BroadcastBlock"  #FFFFAA
+leader -> validator@+25: Block (n)
+
++50 is "Verify (n)"
+leader@+25 -> leader_is@+25
+
++100 is "BroadcastVote"  #FFFFAA
+leader -> validator@+25: Vote (n)
++50 is "Write (n)"
++50 is "Create (n+1)"  #FFAAAA
+leader -> validator@+25: Block (n+1)
+
++50 is "..."
+
+@leader_is
+25 is Invoke
++50 is {-}
+leader_is -> leader
+
++150 is "Pre-Invoke"
++25 is {-}
+leader_is -> leader
+
++75 is "Invoke"
++50 is {-}
+leader_is -> leader
+
+' =====VALIDATORS
+@validator
+0 is "Verify (n-1)"
+validator@+25 -> validator_is@+25: Invoke
+
+100 is "BroadcastVote"  #FFFFAA
+validator -> leader@+25
+
++50 is "Write (n-1)"
++50 is "Await Proposal"  #FFFAAA
+
++100 is "Verify (n)"
+validator@+25 -> validator_is@+25: Invoke
+
++100 is "BroadcastVote"  #FFFFAA
+validator -> leader@+25
++50 is "Write (n)"
++50 is "Await Proposal"  #FFFAAA
+
+@validator_is
+25 is "Invoke"
++50 is {-}
+validator_is -> validator
+
++250 is "Invoke"
++50 is {-}
+validator_is -> validator
+@enduml

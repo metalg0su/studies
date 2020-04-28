@@ -1,0 +1,30 @@
+@startuml
+title 3.0을 위한 개요도
+
+' Definition
+node Loopchain {
+    collections Components as lc  #AAAAFF
+}
+() EventSystem as es #FFAAAA
+node LFT {
+    [Consensus] as lft #FAF000
+    [BlockFactory] as block_factory  #FAFFCF
+    [BlockVoteFactory] as vote_factory  #FAFFCF
+    [BlockVerifier] as block_verifier  #FAFFCF
+    [InvokePool] as invoke_pool  #AAAAFF
+}
+node "ICON-Service" as is  #AAFFAA
+
+' Relations
+lc ..( es
+es ).. lft
+
+lft --> vote_factory: Create Vote
+lft -> block_factory: Create Block
+lft -> block_verifier: Verify Block
+
+block_verifier .> invoke_pool: Call Invoke msg
+vote_factory <. invoke_pool: Get Invoke msg
+
+invoke_pool <.> is: PreInvoke & Invoke
+@enduml
