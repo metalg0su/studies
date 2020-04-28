@@ -1,5 +1,5 @@
 @startuml
-Title: 변화된 합의 과정
+Title: LFT를 사용한 네트워크 합의 과정
 
 concise "ICONService(Leader)" as leader_is
 concise "Node(Leader)" as leader

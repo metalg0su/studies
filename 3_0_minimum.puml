@@ -23,8 +23,8 @@ lft --> vote_factory: Create Vote
 lft -> block_factory: Create Block
 lft -> block_verifier: Verify Block
 
-block_verifier .> invoke_pool: Call Invoke msg
-vote_factory <. invoke_pool: Get Invoke msg
+block_verifier .> invoke_pool: Trigger invoke
+vote_factory .> invoke_pool: Use invoke result
 
-invoke_pool <.> is: PreInvoke & Invoke
+invoke_pool .( is: PreInvoke & Invoke
 @enduml
