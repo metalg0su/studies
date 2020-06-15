@@ -13,7 +13,7 @@ validator is "..."
 validator_is is "..."
 
 legend
-- Yellow: Network blocking
+- Yellow: Network bound
 - Red: Create Block
 end legend
 
@@ -25,8 +25,7 @@ leader@+25 -> leader_is@+25: Invoke
 +100 is "BroadcastVote"  #FFFFAA
 leader -> validator@+25: Vote (n-1)
 
-+50 is "Write (n-1)"
-
++50 is "Commit (n-2)"  #AAFFAA
 +50 is "Create (n)"  #FFAAAA
 leader@+25 -> leader_is@+25: Pre-Invoke
 
@@ -38,11 +37,11 @@ leader@+25 -> leader_is@+25
 
 +100 is "BroadcastVote"  #FFFFAA
 leader -> validator@+25: Vote (n)
-+50 is "Write (n)"
++50 is "Commit (n-1)"  #AAFFAA
 +50 is "Create (n+1)"  #FFAAAA
-leader -> validator@+25: Block (n+1)
 
 +50 is "..."
+leader -> validator@+25: Block (n+1)
 
 @leader_is
 25 is Invoke
@@ -65,7 +64,7 @@ validator@+25 -> validator_is@+25: Invoke
 100 is "BroadcastVote"  #FFFFAA
 validator -> leader@+25
 
-+50 is "Write (n-1)"
++50 is "Commit (n-2)"  #AAFFAA
 +50 is "Await Proposal"  #FFFAAA
 
 +100 is "Verify (n)"
@@ -73,7 +72,7 @@ validator@+25 -> validator_is@+25: Invoke
 
 +100 is "BroadcastVote"  #FFFFAA
 validator -> leader@+25
-+50 is "Write (n)"
++50 is "Commit (n-1)"  #AAFFAA
 +50 is "Await Proposal"  #FFFAAA
 
 @validator_is
