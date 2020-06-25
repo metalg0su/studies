@@ -7,7 +7,17 @@ box Node
 end box
 
 ==Leader==
-block_fac -> pool: InvokeResult\n(PreInvoke)
+block_fac --> block_fac: PreInvoke
+block_fac -> pool: PreInvoked Result
+note over vote_fac
+    **Contents of PreInvoked Result**:
+    - Epoch num
+    - Round num
+    - addedTransactions
+    - validatorsHash
+    - nextValidatorsHash
+    > Calculate validators here
+end note
 [<- block_fac: Broadcast Block
 
 ...Network Transmission...
@@ -15,6 +25,13 @@ block_fac -> pool: InvokeResult\n(PreInvoke)
 ==Verify==
 verifier <-o]: Receive Block
 verifier -> pool: Request PreInvoked Result
+note over vote_fac
+    **Reason to request PreInvoked Result**:
+    - Set height
+    - Set stateHash
+    - Set receiptsHash
+    - **nextValidatorsHash..???!!!**
+end note
 pool --> verifier: PreInvoked Result
 verifier --> verifier: Invoke
 verifier -> pool: Add Invoke Result to PreInvoked Result
