@@ -1,0 +1,33 @@
+@startuml
+box Node
+    participant BlockFactory as block_fac
+    database InvokePool as pool
+    participant VoteFactory as vote_fac
+    participant BlockVerifier as verifier
+end box
+
+==Leader==
+block_fac -> pool: InvokeResult\n(PreInvoke)
+[<- block_fac: Broadcast Block
+
+...Network Transmission...
+
+==Verify==
+verifier <-o]: Receive Block
+verifier -> pool: Request PreInvoked Result
+pool --> verifier: PreInvoked Result
+verifier --> verifier: Invoke
+verifier -> pool: Add Invoke Result to PreInvoked Result
+
+==Create Vote==
+pool -> vote_fac: InvokeResult
+note over vote_fac
+    **Reason of InvokeResult**:
+    - height
+    - stateHash
+    - receiptsHash
+    - nextValidatorsHash
+end note
+vote_fac -> vote_fac: Create Vote
+vote_fac ->o]: Broadcast Vote
+@enduml
