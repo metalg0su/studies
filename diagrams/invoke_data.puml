@@ -1,0 +1,36 @@
+@startuml
+class "InvokeRequest" as req {
+    + from_block()
+}
+class "PreInvokeResponse" as pre_res {
+    + added_transactions
+    + validators_hash
+    + new(raw_response: dict)
+}
+class "InvokeData" as invoke_data {
+    + height
+    + stateHash
+    + receiptsHash
+    + nextValidatorsHash
+    + new(raw_response: dict)
+}
+class "InvokePool" as invoke_pool {
+    + pre_invoke(height, block_hash)
+    + invoke(block)
+    + genesis_invoke(block)
+    + get_invoke_data(epoch_num, round_num)
+}
+
+class "BlockVoteFactory" as vote_fac
+class "BlockVerifier" as verifier
+
+' Relations
+
+vote_fac <-up- invoke_pool: GET InvokeData
+verifier <-up- invoke_pool: ADD InvokeData
+
+invoke_pool "1" o- "n" invoke_data: "          "
+invoke_pool .. req: invoke()
+invoke_pool .. pre_res: pre_invoke()
+
+@enduml
