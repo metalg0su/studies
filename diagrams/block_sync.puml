@@ -1,0 +1,65 @@
+@startuml
+' Definitions...
+participant BlockManager as block_manager
+database "BlockChain(DB)" as blockchain
+
+box SyncThread
+    participant Worker as sync_thread
+    database RequestResult as queue
+end box
+participant "P2P-Like" as p2p
+
+
+' Relations...
+[-> block_manager: transition
+note over block_manager: Entering State `BlockSync`
+block_manager -> sync_thread
+activate sync_thread
+
+note over sync_thread: Thread Locked
+==Gathering Network Info==
+sync_thread -> p2p: Request info
+activate p2p
+note over p2p: (No responsible class exist - Conceptional thing)
+p2p <-->o]: Gathering network status
+note over p2p: [Validator|Citizen] logic divided!
+p2p --> sync_thread: - Network max_height\n- Last unconfirmed height \n- Valid peer targets
+deactivate p2p
+
+sync_thread -> sync_thread: Clear Last Unconfirmed Block
+sync_thread -> blockchain: Prevent Block Mistmatch
+
+==Sync==
+activate queue
+note over queue: Conceptional thing. Just dict.
+
+loop ends if (Network height < my height)
+    note over sync_thread: `par`: Concurrent work
+    par Request Block
+        loop ends if (given height < my height)
+            note over sync_thread: Increment local height in the task
+            sync_thread ->o]: Request block of current height
+            sync_thread o<--]: Block
+            sync_thread -> queue: Store Block
+        end loop
+    else Sync Block
+        loop ends if (given height < my height)
+            note over sync_thread: Increment local height in the task
+            sync_thread -> queue: Get block of current height
+            queue --> sync_thread: Block
+            sync_thread -> blockchain: add_block_by_sync
+            sync_thread -> queue: Remove info from queue
+        end loop
+    end par
+    note over queue: As member of BlockManager,\n the queue is not removed actually
+    deactivate queue
+    sync_thread -> sync_thread: Update my height (global)
+end loop
+
+==TearDown==
+note over sync_thread: Lock Released
+sync_thread --> block_manager: done
+deactivate sync_thread
+[<- block_manager: transition
+
+@enduml
