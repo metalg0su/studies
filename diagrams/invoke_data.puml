@@ -23,14 +23,18 @@ class "InvokePool" as invoke_pool {
 
 class "BlockVoteFactory" as vote_fac
 class "BlockVerifier" as verifier
+class "BlockFactory" as block_fac
 
 ' Relations
+invoke_pool -> block_fac: pre_invoke()
+(block_fac, invoke_pool) . pre_res: RETURN of pre_invoke()
+req --> verifier: INPUT of invoke()
 
-vote_fac <-up- invoke_pool: GET InvokeData
-verifier <-up- invoke_pool: ADD InvokeData
+verifier <-- invoke_pool: invoke()
 
-invoke_pool "1" o- "n" invoke_data: "          "
-invoke_pool .. req: invoke()
-invoke_pool .. pre_res: pre_invoke()
+invoke_pool "1" o-up- "n" invoke_data: "contains"
 
+vote_fac <-up- invoke_pool: get_invoke_data()
+(verifier, invoke_pool) . invoke_data: CREATE
+invoke_data . (vote_fac, invoke_pool): POP
 @enduml
