@@ -1,4 +1,6 @@
 @startuml
+autonumber
+
 ' Definitions...
 participant BlockManager as block_manager
 database "BlockChain(DB)" as blockchain
@@ -13,7 +15,7 @@ participant "P2P-Like" as p2p
 ' Relations...
 [-> block_manager: transition
 note over block_manager #AAFFAA: Entering State `BlockSync`
-block_manager -> sync_thread
+block_manager -> sync_thread: Create sync thread
 activate sync_thread
 
 note over sync_thread #AAFFFF: Thread Locked
