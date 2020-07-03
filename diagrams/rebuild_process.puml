@@ -1,0 +1,76 @@
+@startuml
+' State definitions
+|#FFAAAA|EvaluateNetwork|
+|#AAAFFF|BlockSync|
+|#AFFAAA|Consensus - Genesis|
+|#AFFAAA|Consensus - Rebuild|
+
+' Start
+|EvaluateNetwork|
+:Init Blockchain;
+if (is DB empty?) then (True)
+    if (is LFT) then (True)
+        |Consensus - Genesis|
+        :Create Genesis;
+        :Invoke Genesis;
+        partition "Set prev block" {
+            :Commit block: Empty Hash;
+        }
+        partition "Set Candidate Block" {
+            :Candidate block: Genesis;
+        }
+
+        (A)
+        note: InitializeEvent
+        detach
+    else (False)
+        |EvaluateNetwork|
+        :Create genesis block;
+        note: 0.x
+    endif
+else (False)
+    :Rebuild block;
+    note: 0.x
+endif
+|BlockSync|
+:Fast Sync;
+:Exiting BlockSync;
+if (exist last commit block? && is LFT) then (True)
+    |Consensus - Rebuild|
+    partition "Set prev block" {
+        :Commit block: last commit block;
+    }
+    partition "Set Validators" {
+        :Validators: last commit block;
+    }
+    partition "Set Votes" {
+        :Votes: None;
+        note right: Receive through P2P
+    }
+    if (exist last unconfirmed block?) then (True)
+        -> Last unconfirmed block Synced!;
+        partition "Set Candidate Block" {
+        if (me == leader) then (True)
+            :Candidate block: I create;
+        else
+            :Candidate block: None;
+        endif
+        }
+    else (False)
+        -> Nothing synced!;
+        partition "Set Candidate Block" {
+            :Candidate block: None;
+            note left: Receive through P2P
+        }
+    endif
+    (A)
+    note: InitializeEvent
+    detach
+else (False)
+    |BlockSync|
+    :Loopchain 2.x;
+    (B)
+    note: Siever
+    detach
+endif
+@enduml
