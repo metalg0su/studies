@@ -2,41 +2,37 @@
 ' State definitions
 |#FFAAAA|EvaluateNetwork|
 |#AAAFFF|BlockSync|
-|#AFFAAA|Consensus - Genesis|
-|#AFFAAA|Consensus - Rebuild|
+
+' DB is empty
+|#AFFAAA|Consensus(A)|
+' DB is not empty
+|#AFFAAA|Consensus(B)|
 
 ' Start
 |EvaluateNetwork|
 :Init Blockchain;
-if (is DB empty?) then (True)
-    if (is LFT) then (True)
-        |Consensus - Genesis|
-        :Create Genesis;
-        :Invoke Genesis;
-        partition "Set prev block" {
-            :Commit block: Empty Hash;
-        }
-        partition "Set Candidate Block" {
-            :Candidate block: Genesis;
-        }
-
-        (A)
-        note: InitializeEvent
-        detach
-    else (False)
-        |EvaluateNetwork|
-        :Create genesis block;
-        note: 0.x
-    endif
-else (False)
+if (DB is not empty?) then (True)
     :Rebuild block;
-    note: 0.x
 endif
+
 |BlockSync|
 :Fast Sync;
 :Exiting BlockSync;
-if (exist last commit block? && is LFT) then (True)
-    |Consensus - Rebuild|
+if (is genesis) then (True)
+    if (is LFT) then (True)
+        (A)
+        note right: LFT from DB
+        detach
+    else (False)
+        |BlockSync|
+        :Create genesis block;
+        stop
+        note: Siever
+    endif
+
+    |Consensus(B)|
+    (B)
+    note: LFT) DB exists
     partition "Set prev block" {
         :Commit block: last commit block;
     }
@@ -47,30 +43,41 @@ if (exist last commit block? && is LFT) then (True)
         :Votes: None;
         note right: Receive through P2P
     }
-    if (exist last unconfirmed block?) then (True)
-        -> Last unconfirmed block Synced!;
-        partition "Set Candidate Block" {
+    partition "Set Candidate Block" {
         if (me == leader) then (True)
             :Candidate block: I create;
         else
             :Candidate block: None;
+            note right: Receive through P2P
         endif
-        }
-    else (False)
-        -> Nothing synced!;
-        partition "Set Candidate Block" {
-            :Candidate block: None;
-            note left: Receive through P2P
-        }
-    endif
-    (A)
+    }
+    stop
     note: InitializeEvent
-    detach
 else (False)
     |BlockSync|
-    :Loopchain 2.x;
-    (B)
-    note: Siever
-    detach
+    if (is LFT) then (True)
+        (B)
+        note right: LFT from Gensis
+        detach
+    else (False)
+        |BlockSync|
+        stop
+        note: Siever
+    endif
 endif
+
+
+|Consensus(A)|
+(A)
+note: LFT) DB not exists
+:Create Genesis;
+:Invoke Genesis;
+partition "Set prev block" {
+    :Commit block: Empty Hash;
+}
+partition "Set Candidate Block" {
+    :Candidate block: Genesis;
+}
+stop
+note: InitializeEvent
 @enduml
