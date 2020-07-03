@@ -47,8 +47,11 @@ if (is genesis) then (True)
         if (me == leader) then (True)
             :Candidate block: I create;
         else
-            :Candidate block: None;
-            note right: Receive through P2P
+            :Candidate block: Last Unconfirmed Block;
+            note right #FFAAAA
+                It could be none if not synced in state BlockSync.
+                Check LFT allows empty sequence!
+            end note
         endif
     }
     stop
