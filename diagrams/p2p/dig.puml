@@ -1,5 +1,5 @@
 @startuml
-title Current Status of P2P
+title Consensus Sync
 
 box Loopchain
     participant "P2P Like" as p2p
