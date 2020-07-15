@@ -1,0 +1,32 @@
+@startuml
+title Current Status of P2P
+
+box Loopchain
+    participant "P2P Like" as p2p
+    participant "DB" as db
+end box
+
+control "EventSystem" as es
+
+box LFT
+    participant "LFT" as consensus
+end box
+
+==P2P Layer==
+alt Normal
+    [--> p2p: Broadcast (Block/Vote)
+else Need Sync
+    [<-> p2p: Request-Response (Block/Vote)
+end alt
+
+==Consensus Layer==
+p2p -> es: ReceivedXXX
+es -> consensus: ReceivedXXX
+
+...Reaching Consensus...
+
+==DB Layer==
+consensus --> es: RoundEnd(Block)
+es --> db: RoundEnd(Block)
+db -> db: Write(Block)
+@enduml
