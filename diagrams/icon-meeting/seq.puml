@@ -1,0 +1,31 @@
+@startuml
+actor User as user
+box AWS
+    database S3 as web_server
+end box
+box Contract
+    participant Contract as contract
+    database UserInfo as user_info
+end box
+
+' Relations
+==Get client==
+user -> web_server: GET
+activate web_server
+user <-- web_server: Static Info
+deactivate web_server
+
+==Call APIs==
+user -> contract: Call
+activate contract
+note right
+    - checkUser
+    - getHistoryUser
+    - getProportion
+    - getAdminList
+    - getReserveDate
+    - getUserList
+end note
+user <-- contract: Result
+deactivate contract
+@enduml
